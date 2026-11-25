@@ -11,10 +11,17 @@ const toB64 = (buf) => {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 };
 
-export const passkeySupported = () => typeof window.PublicKeyCredential === "function";
+/** iOS アプリの中なら、パスキーはアプリ側（AuthenticationServices）で扱う（ios/App/PasskeyBridge.swift） */
+const nativeBridge = () => window.webkit?.messageHandlers?.passkey;
+
+export const passkeySupported = () => !!nativeBridge() || typeof window.PublicKeyCredential === "function";
 
 export function passkeyErrorMessage(e) {
   if (e?.name === "AbortError") return null;
+  // アプリ側のエラー（ASAuthorizationError 1001 はキャンセル）
+  if (/ASAuthorizationError 1001\b/.test(e?.message ?? "")) return `パスキーの操作がキャンセルされました（詳細: ${e.message}）`;
+  if (/ASAuthorizationError 1004\b/.test(e?.message ?? ""))
+    return `パスキーを使えませんでした。アプリとドメインの関連付けを確認してください（詳細: ${e.message}）`;
   if (e?.name === "NotAllowedError")
     return `パスキーの操作がキャンセルされたか、許可されませんでした。もう一度お試しください（詳細: ${e.message}）`;
   if (e?.name === "InvalidStateError") return "この端末のパスキーはすでに登録されています";
@@ -60,6 +67,7 @@ export function prefetchOptions(fetcher, el) {
 }
 
 export async function createPasskey(options) {
+  if (nativeBridge()) return nativeBridge().postMessage({ type: "create", options });
   const publicKey = {
     ...options,
     challenge: toBuf(options.challenge),
@@ -82,6 +90,7 @@ export async function createPasskey(options) {
 }
 
 export async function getPasskey(options) {
+  if (nativeBridge()) return nativeBridge().postMessage({ type: "get", options });
   const publicKey = {
     ...options,
     challenge: toBuf(options.challenge),

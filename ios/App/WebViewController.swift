@@ -26,6 +26,9 @@ final class WebViewController: UIViewController {
         config.websiteDataStore = .default() // ログインの Cookie をアプリを閉じても残す
         config.allowsInlineMediaPlayback = true
         config.applicationNameForUserAgent = "DevelopingAnAppTogether-iOS"
+        // パスキーはアプリ側（AuthenticationServices）で扱う。Web からは window.webkit.messageHandlers.passkey で呼ぶ
+        let passkey = PasskeyBridge(allowedHost: startURL.host ?? "", anchorView: view)
+        config.userContentController.addScriptMessageHandler(passkey, contentWorld: .page, name: "passkey")
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
