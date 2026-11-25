@@ -22,7 +22,10 @@ GIT_NAME="${GIT_NAME:-$(git -C "$HERE" log -1 --format=%an origin/main)}"
 GIT_EMAIL="${GIT_EMAIL:-$(git -C "$HERE" log -1 --format=%ae origin/main)}"
 
 mkdir -p "$INSTALL_DIR"
-cp "$HERE/worker.sh" "$HERE/prompt.md" "$HERE/render-prompt.mjs" "$INSTALL_DIR/"
+# 動いている最中の worker.sh を上書きすると、bash が途中から壊れた中身を読むので、別名でコピーしてから入れ替える
+for f in worker.sh prompt.md render-prompt.mjs; do
+  cp "$HERE/$f" "$INSTALL_DIR/.$f.new" && mv -f "$INSTALL_DIR/.$f.new" "$INSTALL_DIR/$f"
+done
 chmod +x "$INSTALL_DIR/worker.sh"
 cat > "$INSTALL_DIR/config.sh" <<CONF
 REPO="$REPO"

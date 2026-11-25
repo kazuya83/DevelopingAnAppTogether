@@ -144,6 +144,7 @@ gh issue list --label from-app で、まだ誰も着手していない Issue を
 
 - **安全のため**：Issue の本文は誰でも書けるので、Claude に許可するのはファイルの読み書きと `npm run check`・`git status/diff/log` だけです。`gh`・`git push`・Web へのアクセス・MCP は使えません。PR を作るのはスクリプトで、`.github/`・`scripts/`・`ios/`・`wrangler.jsonc`・`package*.json` が変わっていたら PR を作らずに `claude-failed` にします。**マージは人が判断します。**
 - **上限**：1 日に着手するのは 3 件まで、1 件の開発は 60 分まで。
+- **他の人は Issue に触れない**：GitHub の「操作の制限」で、Issue・コメント・PR を作れるのは共同作業者だけにしています（アプリからの Issue は管理者のトークンで作るので影響なし）。この制限は最長 6 か月で切れるため、worker.sh が 1 日 1 回確かめ、残り 30 日を切ったら延長します。
 - 1 回の開発が 10 分を超えても、次の回は重ならずに待ちます。
 - 作業用のリポジトリは内蔵ディスクに置きます。launchd から動くプログラムは、許可しない限り外付けディスクや「書類」フォルダを読めないためです。内蔵ディスクの空きが 1.5GB より少ないときは着手しません。
 - 上限や間隔は `DAILY_LIMIT=5 INTERVAL=600 CLAUDE_TIMEOUT=3600 MIN_FREE_MB=1500 scripts/issue-worker/install.sh` のように変えられます。
