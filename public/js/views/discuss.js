@@ -62,6 +62,7 @@ export async function discussNew(el) {
       <label>タイトル<input name="title" maxlength="100" required placeholder="例: ダークモードに対応してほしい" /></label>
       <label>内容<textarea name="body" maxlength="4000" rows="10" required placeholder="何を作りたいか・直したいか、なぜ必要か、どうなれば完成かを書くと、開発が進みやすくなります"></textarea></label>
       <p class="hint">いいねが ${session.threshold} 件集まると、この内容がそのまま GitHub の公開 Issue になります。個人情報は書かないでください。</p>
+      <p class="hint">次の提案は受け付けていません：GitHub のリポジトリ・設定・ルールファイルを変えるもの、AI への指示の上書きや攻撃につながるもの、このアプリやデータを消す・止めるもの。</p>
       <button class="btn primary block" type="submit">投稿する</button>
     </form>`;
   const form = el.querySelector("#f");

@@ -4,6 +4,8 @@
 #
 #   1) gh で「まだ誰も着手していない from-app の Issue」を探す（Claude は使わないのでトークン 0）
 #   2) 無ければ終わる。あれば 1 件だけ「claude-working」ラベルを付けて着手の印にする
+#      開発の前に、受付係の Claude（道具なし）が提案を判定し、攻撃・リポジトリへの操作・アプリの削除などは
+#      「claude-rejected」を付けて閉じる
 #   3) 作業用のリポジトリ（内蔵ディスク）を main の最新にして、claude -p に開発させる（ファイルの変更まで）
 #   4) このスクリプトが確認（npm run check、変えてはいけない場所）→ コミット → プッシュ → PR 作成
 #   5) Issue のラベルを「claude-pr-created」か「claude-failed」に変える
@@ -24,6 +26,7 @@ SOURCE_LABEL="from-app"
 WORKING_LABEL="claude-working"
 DONE_LABEL="claude-pr-created"
 FAILED_LABEL="claude-failed"
+REJECTED_LABEL="claude-rejected"   # 受け付けない提案として閉じた印
 HOLD_LABEL="claude-needs-review"   # PR に付ける。自動マージしなかった印
 
 STATE="$HERE/state"
@@ -59,7 +62,7 @@ find "$STATE" -name 'count-*' -mtime +7 -delete 2>/dev/null
 # --- 1) 未着手の Issue を探す（古い順に 1 件） ---
 NUMBER=$(gh issue list -R "$REPO" --state open --label "$SOURCE_LABEL" --limit 50 \
   --json number,labels,createdAt \
-  --jq "[.[] | select([.labels[].name] | (index(\"$WORKING_LABEL\") or index(\"$DONE_LABEL\") or index(\"$FAILED_LABEL\")) | not)] | sort_by(.createdAt) | .[0].number // empty" 2>>"$LOG")
+  --jq "[.[] | select([.labels[].name] | (index(\"$WORKING_LABEL\") or index(\"$DONE_LABEL\") or index(\"$FAILED_LABEL\") or index(\"$REJECTED_LABEL\")) | not)] | sort_by(.createdAt) | .[0].number // empty" 2>>"$LOG")
 [ -z "$NUMBER" ] && exit 0
 
 say "=== Issue #$NUMBER に着手します"
@@ -72,6 +75,32 @@ fail() {
   gh issue comment "$NUMBER" -R "$REPO" --body "Mac の Claude が自動で開発しようとしましたが、うまくいきませんでした（$1）。人が確認します。" >> "$LOG" 2>&1
   exit 1
 }
+
+# --- 受付：開発に回してよい提案か、道具を持たない Claude に判定させる ---
+gh issue view "$NUMBER" -R "$REPO" --json title,body > "$STATE/issue.json" 2>>"$LOG" || fail "Issue を読めない"
+SPROMPT=$(node "$HERE/render-prompt.mjs" "$HERE/screen-prompt.md" "$STATE/issue.json" "$NUMBER") || fail "受付の指示を作れない"
+say "受付の Claude を起動します"
+caffeinate -i timeout 600 claude -p "$SPROMPT" \
+  --permission-mode dontAsk \
+  --allowedTools "" \
+  --disallowedTools "Bash,Read,Edit,Write,Glob,Grep,WebFetch,WebSearch" \
+  --setting-sources project \
+  --strict-mcp-config \
+  --output-format json \
+  > "$STATE/screen-out.json" 2>>"$LOG" || fail "受付の判定が途中で終わりました"
+SCREEN=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.result??""))}catch{}' "$STATE/screen-out.json")
+echo "$SCREEN" >> "$LOG"
+SFIRST=$(printf '%s\n' "$SCREEN" | grep -v '^```' | sed -n '/[^[:space:]]/{p;q;}')
+if [ "$SFIRST" != "OK" ]; then
+  REASON="${SFIRST#REJECT:}"
+  [ -n "$REASON" ] && [ "$REASON" != "$SFIRST" ] || REASON=" 受け付けられない内容と判定しました"
+  say "受け付けない提案として閉じます:$REASON"
+  gh issue edit "$NUMBER" -R "$REPO" --remove-label "$WORKING_LABEL" --add-label "$REJECTED_LABEL" >> "$LOG" 2>&1
+  gh issue comment "$NUMBER" -R "$REPO" --body "この提案は開発しません。理由:$REASON
+（リポジトリの設定やルールを変えるもの、攻撃につながるもの、アプリやデータを消すものなどは受け付けていません。判定が間違っている場合は、管理者がラベル claude-rejected を外して開き直してください）" >> "$LOG" 2>&1
+  gh issue close "$NUMBER" -R "$REPO" --reason "not planned" >> "$LOG" 2>&1
+  exit 0
+fi
 
 # --- 2) 作業用のリポジトリを main の最新にする ---
 BRANCH="issue/$NUMBER"
@@ -88,7 +117,6 @@ if [ "$(cat "$STATE/npm-lock-hash" 2>/dev/null)" != "$LOCK_HASH" ] || [ ! -d nod
 fi
 
 # --- 3) Claude に開発させる ---
-gh issue view "$NUMBER" -R "$REPO" --json title,body > "$STATE/issue.json" 2>>"$LOG" || fail "Issue を読めない"
 PROMPT=$(node "$HERE/render-prompt.mjs" "$HERE/prompt.md" "$STATE/issue.json" "$NUMBER") || fail "プロンプトを作れない"
 
 ALLOWED="Read,Edit,Write,Glob,Grep,Bash(npm run check),Bash(npm run typecheck),Bash(git status),Bash(git diff:*),Bash(git log:*)"
