@@ -1,7 +1,7 @@
 import { api } from "../api.js";
 import { go, refreshSession, session } from "../app.js";
 import { actionSheet, avatar, busy, empty, esc, formatDate, proposalCard, timeAgo, toast } from "../ui.js";
-import { createPasskey, passkeyErrorMessage } from "../webauthn.js";
+import { createPasskey, passkeyErrorMessage, prefetchOptions } from "../webauthn.js";
 import { loginView } from "./login.js";
 import { block, report } from "./discuss.js";
 
@@ -291,19 +291,24 @@ export async function userSettings(el) {
     }),
   );
 
-  el.querySelector("#add-passkey").addEventListener("click", (e) =>
+  // パスキーは「押した直後」に呼ぶ必要があるので、オプションは先に取っておく
+  el._stopPrefetch?.(); // 設定画面を描き直したときに前の分を止める
+  const addOpts = prefetchOptions(() => api.post("/me/passkeys/options"), el);
+  el._stopPrefetch = addOpts.stop;
+  el.querySelector("#add-passkey").addEventListener("click", (e) => {
+    const prepared = addOpts.take();
+    if (!prepared) return toast("準備中です。少し待ってからもう一度押してください");
     busy(e.currentTarget, async () => {
       try {
-        const { flowId, options } = await api.post("/me/passkeys/options");
-        const response = await createPasskey(options);
-        await api.post("/me/passkeys/verify", { flowId, response });
+        const response = await createPasskey(prepared.options);
+        await api.post("/me/passkeys/verify", { flowId: prepared.flowId, response });
         toast("パスキーを追加しました");
         await userSettings(el);
       } catch (err) {
         toast(err.status ? err.message : passkeyErrorMessage(err));
       }
-    }),
-  );
+    });
+  });
 
   el.querySelectorAll(".unblock").forEach((b) =>
     b.addEventListener("click", async () => {
