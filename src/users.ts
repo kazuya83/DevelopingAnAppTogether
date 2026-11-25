@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv } from "./types";
 import { destroySession } from "./session";
 import { PROPOSAL_COLUMNS, viewerId } from "./proposals";
-import { fail, isAdmin, likeThreshold, now, readJson, requireUser, str } from "./util";
+import { fail, isAdmin, issueThreshold, now, readJson, requireUser, str } from "./util";
 
 const DAY = 24 * 60 * 60 * 1000;
 const JST = 9 * 60 * 60 * 1000;
@@ -89,9 +89,10 @@ users.get("/:id/avatar", async (c) => {
 /** ログイン中のユーザ自身 */
 export const me = new Hono<AppEnv>();
 
-me.get("/", (c) => {
+me.get("/", async (c) => {
   const user = c.get("user");
-  return c.json({ user, isAdmin: isAdmin(c.env, user), threshold: likeThreshold(c.env) });
+  const t = await issueThreshold(c.env);
+  return c.json({ user, isAdmin: isAdmin(c.env, user), threshold: t.threshold, thresholdInfo: t });
 });
 
 me.patch("/", async (c) => {

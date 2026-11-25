@@ -52,6 +52,29 @@ export function rpInfo(c: Context<AppEnv>): { rpID: string; origin: string } {
   return { rpID: new URL(origin).hostname, origin };
 }
 
+export interface ThresholdInfo {
+  /** 今 Issue 化に必要ないいね数 */
+  threshold: number;
+  /** 設定上の基準（LIKE_THRESHOLD） */
+  base: number;
+  /** 登録ユーザ数 */
+  users: number;
+  /** ユーザが基準に満たないため、過半数で決めているか */
+  majority: boolean;
+}
+
+/**
+ * Issue 化に必要ないいね数。
+ * ユーザ数が LIKE_THRESHOLD に満たないうちは、過半数（ユーザ数 / 2 を切り捨てて + 1）にする。
+ */
+export async function issueThreshold(env: Env): Promise<ThresholdInfo> {
+  const base = likeThreshold(env);
+  const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>();
+  const users = row?.n ?? 0;
+  if (users >= base) return { threshold: base, base, users, majority: false };
+  return { threshold: Math.max(1, Math.floor(users / 2) + 1), base, users, majority: true };
+}
+
 export function likeThreshold(env: Env): number {
   const n = parseInt(env.LIKE_THRESHOLD, 10);
   return Number.isFinite(n) && n > 0 ? n : 5;

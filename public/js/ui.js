@@ -104,3 +104,9 @@ export function proposalCard(p, threshold) {
 
 export const loading = () => `<div class="loading"><span class="spinner"></span></div>`;
 export const empty = (text) => `<div class="empty">${esc(text)}</div>`;
+
+/** Issue 化の基準の説明（ユーザが少ないうちは過半数） */
+export function thresholdNote(info) {
+  if (!info?.majority) return "";
+  return `今はユーザが ${info.users} 人なので、過半数の ${info.threshold} 件で Issue になります（${info.base} 人以上になると ${info.base} 件）。`;
+}
