@@ -1,0 +1,4 @@
+# ローカル開発用（.dev.vars にコピーして使う。.dev.vars は git に入れない）
+# GITHUB_TOKEN=github_pat_xxx
+# LIKE_THRESHOLD=2
+# ADMIN_USERNAMES=yourname
