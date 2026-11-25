@@ -229,3 +229,77 @@ button, input, textarea { font: inherit; color: inherit; }
 .loading { display: flex; justify-content: center; padding: 48px; }
 .spinner { width: 28px; height: 28px; border: 3px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ==== 見た目と手ざわりの仕上げ（リッチな UI/UX） ==== */
+:root {
+  --shadow-sm: 0 1px 2px rgb(20 20 40 / 0.06), 0 1px 1px rgb(20 20 40 / 0.04);
+  --shadow-md: 0 4px 14px rgb(20 20 40 / 0.08), 0 1px 3px rgb(20 20 40 / 0.06);
+  --accent-grad: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #a855f7));
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 6px 18px rgb(0 0 0 / 0.45);
+  }
+}
+
+/* 画面を切り替えたときにふわっと出す */
+.page { animation: page-in 0.28s var(--ease); }
+@keyframes page-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* カード・パネルに奥行きを付け、押したときに沈むようにする */
+.card, .panel, .stat-tile, .heatmap-wrap, .proposal-detail .body { box-shadow: var(--shadow-sm); }
+.card { transition: transform 0.15s var(--ease), box-shadow 0.15s var(--ease), border-color 0.15s; }
+a.card:active { transform: scale(0.98); box-shadow: none; }
+@media (hover: hover) {
+  a.card:hover { box-shadow: var(--shadow-md); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); transform: translateY(-1px); }
+}
+
+/* ボタン */
+.btn, .like-btn, .sheet button, .segmented button, .back, .icon-btn {
+  transition: transform 0.12s var(--ease), background-color 0.15s, box-shadow 0.15s, opacity 0.15s;
+}
+.btn:not(:disabled):active, .like-btn:not(:disabled):active, .sheet button:active { transform: scale(0.96); }
+.btn.primary { background: var(--accent-grad); box-shadow: 0 4px 12px color-mix(in srgb, var(--accent) 35%, transparent); }
+.stat-tile.score { background: var(--accent-grad); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent); }
+.btn:disabled { cursor: default; }
+
+/* キーボード操作のときだけ見やすい枠を出す */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 8px; }
+.form input:not([type="file"]):focus, .form textarea:focus, .comment-form textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 20%, transparent);
+}
+.form input, .form textarea, .comment-form textarea { transition: border-color 0.15s, box-shadow 0.15s; }
+
+/* タブ：押したときにアイコンを縮め、選んだタブを少し持ち上げる */
+#tabbar a { transition: color 0.2s; }
+#tabbar a svg { transition: transform 0.2s var(--ease); }
+#tabbar a:active svg { transform: scale(0.88); }
+#tabbar a.active svg { transform: translateY(-1px); }
+
+/* いいね */
+.like-btn.liked { box-shadow: 0 2px 10px color-mix(in srgb, var(--like) 25%, transparent); }
+.like-btn .heart { display: inline-block; }
+.like-btn .heart.pop { animation: heart-pop 0.45s var(--ease); }
+@keyframes heart-pop { 0% { transform: scale(1); } 35% { transform: scale(1.5); } 70% { transform: scale(0.9); } 100% { transform: scale(1); } }
+.progress span { background: linear-gradient(90deg, color-mix(in srgb, var(--like) 75%, #f59e0b), var(--like)); }
+
+/* ランキング上位をメダルの色で縁取る */
+.card.rank:has(.rank-1) { border-color: color-mix(in srgb, #d4a017 45%, var(--line)); }
+.card.rank:has(.rank-2) { border-color: color-mix(in srgb, #9ea7b3 45%, var(--line)); }
+.card.rank:has(.rank-3) { border-color: color-mix(in srgb, #c77b30 45%, var(--line)); }
+
+/* 下から出るメニューの背景をぼかす */
+.sheet-backdrop { -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+.sheet button { box-shadow: var(--shadow-sm); }
+
+/* トースト */
+#toast { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); box-shadow: var(--shadow-md); }
+
+/* 動きを減らす設定の人には、アニメーションを出さない */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
