@@ -6,7 +6,6 @@
 set -eu
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-SRC_REPO_DIR="$(git -C "$HERE" rev-parse --path-format=absolute --git-common-dir | sed 's#/\.git$##')"
 REPO="${REPO:-kazuya83/DevelopingAnAppTogether}"
 INSTALL_DIR="$HOME/.local/share/minna-issue-worker"
 LABEL="com.kazuya83.minna-issue-worker"
@@ -14,14 +13,23 @@ PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 INTERVAL="${INTERVAL:-600}"          # 秒。10 分おき
 DAILY_LIMIT="${DAILY_LIMIT:-3}"      # 1 日に着手する Issue の上限
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-3600}"  # 1 件の開発にかけてよい秒数
+# 作業用のリポジトリ。内蔵ディスクに置く（launchd から動くプログラムは、許可なしに外付けディスクを読めない）
+WORK_DIR="${WORK_DIR:-$HOME/work/minna-issue-worker}"
+MIN_FREE_MB="${MIN_FREE_MB:-1500}"     # 内蔵ディスクの空きがこれより少ないときは着手しない
+
+# コミットの作者。このリポジトリの main の最新コミットの作者（GitHub の noreply アドレス）を使う
+GIT_NAME="${GIT_NAME:-$(git -C "$HERE" log -1 --format=%an origin/main)}"
+GIT_EMAIL="${GIT_EMAIL:-$(git -C "$HERE" log -1 --format=%ae origin/main)}"
 
 mkdir -p "$INSTALL_DIR"
 cp "$HERE/worker.sh" "$HERE/prompt.md" "$HERE/render-prompt.mjs" "$INSTALL_DIR/"
 chmod +x "$INSTALL_DIR/worker.sh"
 cat > "$INSTALL_DIR/config.sh" <<CONF
 REPO="$REPO"
-SRC_REPO_DIR="$SRC_REPO_DIR"
-WORK_DIR="$SRC_REPO_DIR.issue-worker"
+WORK_DIR="$WORK_DIR"
+MIN_FREE_MB=$MIN_FREE_MB
+GIT_NAME="$GIT_NAME"
+GIT_EMAIL="$GIT_EMAIL"
 DAILY_LIMIT=$DAILY_LIMIT
 CLAUDE_TIMEOUT=$CLAUDE_TIMEOUT
 CONF
