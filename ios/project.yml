@@ -1,0 +1,31 @@
+name: DevelopingAnAppTogether
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    # ここを自分の環境に合わせて変える（README の「iOS アプリ」を参照）
+    DEVELOPMENT_TEAM: ""
+    PRODUCT_BUNDLE_IDENTIFIER: com.example.developinganapptogether
+    # Web（Cloudflare Workers）のドメイン。パスキーの Associated Domains にも使う
+    WEB_APP_DOMAIN: developing-an-app-together.example.workers.dev
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+targets:
+  DevelopingAnAppTogether:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_NAME: みんなでアプリ開発
+        CODE_SIGN_ENTITLEMENTS: App/App.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO

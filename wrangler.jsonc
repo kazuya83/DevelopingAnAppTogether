@@ -1,0 +1,38 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "developing-an-app-together",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // 画面（public/）と API（src/）を 1 つの Worker で配る。API と .well-known は Worker が先に処理する
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*", "/.well-known/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "developing-an-app-together",
+      // `npx wrangler d1 create developing-an-app-together` で表示された ID に置き換える
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // いいねが基準に届いたのに Issue 化に失敗した提案を 1 時間ごとに作り直す
+  "triggers": { "crons": ["17 * * * *"] },
+  "vars": {
+    // Issue にする「いいね」の数
+    "LIKE_THRESHOLD": "5",
+    // Issue を作るリポジトリ（owner/name）
+    "GITHUB_REPO": "kazuya83/DevelopingAnAppTogether",
+    // Issue に付けるラベル（Mac の Claude はこのラベルの Issue を拾う）
+    "GITHUB_ISSUE_LABEL": "from-app",
+    // 管理者のユーザ名（カンマ区切り）。投稿・コメントの削除と通報の確認ができる
+    "ADMIN_USERNAMES": "",
+    // パスキー用。iOS アプリの「TeamID.バンドルID」（例: ABCDE12345.com.example.together）
+    "APPLE_APP_ID": "",
+    "RP_NAME": "みんなでアプリ開発"
+  },
+  "observability": { "enabled": true }
+}
