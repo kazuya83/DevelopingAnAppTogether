@@ -15,7 +15,8 @@ export const passkeySupported = () => typeof window.PublicKeyCredential === "fun
 
 export function passkeyErrorMessage(e) {
   if (e?.name === "AbortError") return null;
-  if (e?.name === "NotAllowedError") return "パスキーの操作がキャンセルされたか、許可されませんでした。もう一度お試しください";
+  if (e?.name === "NotAllowedError")
+    return `パスキーの操作がキャンセルされたか、許可されませんでした。もう一度お試しください（詳細: ${e.message}）`;
   if (e?.name === "InvalidStateError") return "この端末のパスキーはすでに登録されています";
   if (e?.name === "SecurityError") return "このドメインではパスキーを使えません（アプリの設定を確認してください）";
   return e?.message || "パスキーの処理に失敗しました";
