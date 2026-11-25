@@ -1,14 +1,14 @@
 name: DevelopingAnAppTogether
 options:
-  bundleIdPrefix: com.example
+  bundleIdPrefix: com.kazuya83
   deploymentTarget:
     iOS: "16.0"
   createIntermediateGroups: true
 settings:
   base:
     # ここを自分の環境に合わせて変える（README の「iOS アプリ」を参照）
-    DEVELOPMENT_TEAM: ""
-    PRODUCT_BUNDLE_IDENTIFIER: com.example.developinganapptogether
+    DEVELOPMENT_TEAM: Y9YNQSMN52
+    PRODUCT_BUNDLE_IDENTIFIER: com.kazuya83.developinganapptogether
     # Web（Cloudflare Workers）のドメイン。パスキーの Associated Domains にも使う
     WEB_APP_DOMAIN: developing-an-app-together.minna-dev.workers.dev
     MARKETING_VERSION: "1.0.0"
