@@ -14,10 +14,48 @@ const toB64 = (buf) => {
 export const passkeySupported = () => typeof window.PublicKeyCredential === "function";
 
 export function passkeyErrorMessage(e) {
-  if (e?.name === "NotAllowedError" || e?.name === "AbortError") return null; // キャンセル
+  if (e?.name === "AbortError") return null;
+  if (e?.name === "NotAllowedError") return "パスキーの操作がキャンセルされたか、許可されませんでした。もう一度お試しください";
   if (e?.name === "InvalidStateError") return "この端末のパスキーはすでに登録されています";
-  if (e?.name === "SecurityError") return "このドメインではパスキーを使えません（設定を確認してください）";
+  if (e?.name === "SecurityError") return "このドメインではパスキーを使えません（アプリの設定を確認してください）";
   return e?.message || "パスキーの処理に失敗しました";
+}
+
+/**
+ * パスキーのオプションを先に取っておく。
+ * iOS の WKWebView は「ボタンを押した直後」でないとパスキーの画面を出さないので、
+ * 押してからサーバーに問い合わせるのではなく、画面を開いた時点で取っておき、押したらすぐ使う。
+ * チャレンジは 5 分で切れるので 4 分ごとに取り直す。
+ */
+export function prefetchOptions(fetcher, el) {
+  let current = null;
+  let pending = null;
+  const load = () => {
+    pending = fetcher()
+      .then((data) => (current = { ...data, at: Date.now() }))
+      .catch(() => (current = null))
+      .finally(() => (pending = null));
+    return pending;
+  };
+  load();
+  // 画面から外れたら止める（描画直後は el がまだ DOM に無いので、一度表示されてから判定する）
+  let shown = false;
+  const timer = setInterval(() => {
+    if (el.isConnected) shown = true;
+    else if (shown) return clearInterval(timer);
+    load();
+  }, 4 * 60 * 1000);
+  return {
+    /** 使えるオプションを 1 回分取り出す（無ければ null）。取り出したら次の分を取りに行く */
+    take() {
+      const data = current && Date.now() - current.at < 4.5 * 60 * 1000 ? current : null;
+      current = null;
+      if (!pending) load();
+      return data;
+    },
+    ready: () => pending ?? Promise.resolve(),
+    stop: () => clearInterval(timer),
+  };
 }
 
 export async function createPasskey(options) {

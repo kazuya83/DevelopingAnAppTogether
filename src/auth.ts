@@ -107,21 +107,41 @@ async function verifyRegistration(c: Context<AppEnv>, response: unknown, challen
 
 export const auth = new Hono<AppEnv>();
 
-/** 新規登録: ユーザ名を受け取り、パスキー作成のオプションを返す */
-auth.post("/register/options", async (c) => {
-  const body = await readJson(c);
-  const username = typeof body.username === "string" ? body.username.trim() : "";
+async function checkUsername(c: Context<AppEnv>, raw: unknown): Promise<string> {
+  const username = typeof raw === "string" ? raw.trim() : "";
   if (!USERNAME_RE.test(username)) fail(400, "ユーザ名は半角英数字と _ で 3〜20 文字にしてください");
   const taken = await c.env.DB.prepare("SELECT 1 FROM users WHERE username = ?").bind(username).first();
   if (taken) fail(409, "このユーザ名はすでに使われています");
+  return username;
+}
+
+/** ユーザ名が使えるか（入力中に確かめる） */
+auth.get("/username-available", async (c) => {
+  try {
+    await checkUsername(c, c.req.query("username"));
+    return c.json({ available: true });
+  } catch (e) {
+    if (e instanceof HTTPException) return c.json({ available: false, error: e.message });
+    throw e;
+  }
+});
+
+/**
+ * 新規登録: パスキー作成のオプションを返す。
+ * WKWebView ではボタンを押した直後にパスキーを呼ばないと断られるので、画面を開いた時点で先に取っておけるよう
+ * ユーザ名は省略できる（省略時はブラウザ側で user.name を入れ、verify でユーザ名を受け取る）。
+ */
+auth.post("/register/options", async (c) => {
+  const body = await readJson(c);
+  const username = body.username === undefined ? null : await checkUsername(c, body.username);
 
   const userIdBytes = crypto.getRandomValues(new Uint8Array(16));
   const { rpID } = rpInfo(c);
   const options = await generateRegistrationOptions({
     rpName: c.env.RP_NAME,
     rpID,
-    userName: username,
-    userDisplayName: username,
+    userName: username ?? "new-user",
+    userDisplayName: username ?? "new-user",
     userID: userIdBytes,
     attestationType: "none",
     authenticatorSelection: { residentKey: "required", userVerification: "preferred" },
@@ -133,9 +153,9 @@ auth.post("/register/options", async (c) => {
 auth.post("/register/verify", async (c) => {
   const body = await readJson(c);
   const ch = await takeChallenge(c, body.flowId, "register");
+  const username = ch.username ?? (await checkUsername(c, body.username));
   const info = await verifyRegistration(c, body.response, ch.challenge);
   const userId = ch.user_id!;
-  const username = ch.username!;
   try {
     await c.env.DB.batch([
       c.env.DB.prepare("INSERT INTO users (id, username, display_name, created_at) VALUES (?, ?, ?, ?)").bind(
