@@ -3,7 +3,7 @@ name: Issue guard
 # Issue はアプリの「議論」から作るもの。他の人が Issue に触れないようにする（PR は誰でも出せる）。
 # - 共同作業者以外が作った Issue は、案内を書いて閉じる
 # - すべての Issue をロックして、共同作業者以外はコメントできないようにする
-# 手動で実行（workflow_dispatch）すると、ロックされていない既存の Issue をまとめてロックする。
+# 手動で実行（workflow_dispatch）すると、ロックされていない既存の Issue をまとめてロックする（Actions の画面の「Run workflow」）。
 on:
   issues:
     types: [opened, reopened]
