@@ -144,7 +144,7 @@ gh issue list --label from-app で、まだ誰も着手していない Issue を
            → main へのマージで本番にデプロイされ、Issue も閉じる
 ```
 
-- **安全のため**：Issue の本文は誰でも書けるので、Claude に許可するのはファイルの読み書きと `npm run check`・`git status/diff/log` だけです。`gh`・`git push`・Web へのアクセス・MCP は使えません。PR を作るのはスクリプトで、`.github/`・`scripts/`・`ios/`・`wrangler.jsonc`・`package*.json` が変わっていたら PR を作らずに `claude-failed` にします。**マージは人が判断します。**
+- **安全のため**：Issue の本文は誰でも書けるので、Claude に許可するのはファイルの読み書きと `npm run check`・`git status/diff/log` だけです。`gh`・`git push`・Web へのアクセス・MCP は使えません。PR を作るのはスクリプトで、`.github/`・`scripts/`・`ios/`・`wrangler.jsonc`・`package*.json` が変わっていたら PR を作らずに `claude-failed` にします。マージもスクリプトが行い、下の条件を満たさないときは人に任せます。
 - **上限**：1 日に着手するのは 3 件まで、1 件の開発は 60 分まで。
 - **他の人は Issue に触れない**：`.github/workflows/issue-guard.yml` が、共同作業者以外が作った Issue を閉じ、すべての Issue をロックします（ロックされた Issue には共同作業者しかコメントできません）。アプリからの Issue は管理者のトークンで作るので影響ありません。**PR は誰でも出せますが、マージできるのは書き込み権限を持つ人（管理者）だけです。** Mac の仕組みは、自分が Issue から作った PR だけを、下の条件で自動マージします。
 - **自動マージの条件**：CI（`check`）が通ること、レビュー用の Claude（ファイルを読むことしかできない）が APPROVE を返すこと、`migrations/` を変えていないこと（本番の DB にそのまま適用されるため）。満たさなければ PR にラベル `claude-needs-review` を付けて残すので、人が確認してマージします。
