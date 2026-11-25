@@ -1,5 +1,5 @@
 #!/bin/bash
-# アプリから作られた Issue（ラベル from-app）を拾って、Claude に開発させ、プルリクエストを出す。
+# アプリから作られた Issue（ラベル from-app）を拾って、Claude に開発させ、プルリクエストを出してマージする。
 # launchd（com.kazuya83.minna-issue-worker）から 10 分おきに呼ばれる。install.sh が入れる。
 #
 #   1) gh で「まだ誰も着手していない from-app の Issue」を探す（Claude は使わないのでトークン 0）
@@ -7,8 +7,10 @@
 #   3) 作業用のリポジトリ（内蔵ディスク）を main の最新にして、claude -p に開発させる（ファイルの変更まで）
 #   4) このスクリプトが確認（npm run check、変えてはいけない場所）→ コミット → プッシュ → PR 作成
 #   5) Issue のラベルを「claude-pr-created」か「claude-failed」に変える
+#   6) 自動マージ：CI が通り、別の Claude のレビュー（読むだけ）が APPROVE なら、スクリプトがマージする
+#      （マージすると本番にデプロイされる）。条件を満たさなければ PR を残して人に任せる
 #
-# Claude には gh・git push・マージを許可しない。マージは人が判断する。
+# 開発・レビューをする Claude には gh・git push・マージを許可しない。マージするのはこのスクリプトだけ。
 set -u
 export PATH="/opt/homebrew/bin:$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 [ -f "$HOME/.claude_token_env" ] && { set -a; . "$HOME/.claude_token_env"; set +a; }
@@ -22,6 +24,7 @@ SOURCE_LABEL="from-app"
 WORKING_LABEL="claude-working"
 DONE_LABEL="claude-pr-created"
 FAILED_LABEL="claude-failed"
+HOLD_LABEL="claude-needs-review"   # PR に付ける。自動マージしなかった印
 
 STATE="$HERE/state"
 LOGS="$HERE/logs"
@@ -46,20 +49,6 @@ if [ ! -d "$WORK_DIR/.git" ]; then
   git clone -q "https://github.com/$REPO.git" "$WORK_DIR" >> "$LOG" 2>&1 || { say "clone に失敗"; rm -rf "$WORK_DIR"; exit 0; }
 fi
 git -C "$WORK_DIR" fetch -q origin main >> "$LOG" 2>&1 || { say "git fetch に失敗（着手しません）"; exit 0; }
-
-# --- リポジトリの「操作の制限」（Issue・コメント・PR を共同作業者だけにする）を切らさない ---
-# GitHub の制限は最長 6 か月で切れるので、1 日 1 回確かめて、残り 30 日を切っていたら延長する
-LIMIT_MARK="$STATE/interaction-limit-$(date +%F)"
-if [ ! -f "$LIMIT_MARK" ]; then
-  EXPIRES=$(gh api "repos/$REPO/interaction-limits" --jq '.expires_at // empty' 2>>"$LOG")
-  SOON=$(date -u -v+30d +%Y-%m-%dT%H:%M:%SZ)
-  if [ -z "$EXPIRES" ] || [[ "$EXPIRES" < "$SOON" ]]; then
-    if gh api -X PUT "repos/$REPO/interaction-limits" -f limit=collaborators_only -f expiry=six_months >> "$LOG" 2>&1; then
-      say "操作の制限を延長しました"; touch "$LIMIT_MARK"
-    else say "WARN: 操作の制限を延長できませんでした（次の回にまた試します）"; fi
-  else touch "$LIMIT_MARK"; fi
-  find "$STATE" -name 'interaction-limit-*' -mtime +3 -delete 2>/dev/null
-fi
 
 # --- 1 日の上限 ---
 TODAY_COUNT_FILE="$STATE/count-$(date +%F)"
@@ -151,11 +140,55 @@ PR_BODY="$BODY
 ---
 Closes #$NUMBER
 
-アプリの議論から作られた Issue を、Mac の Claude（scripts/issue-worker）が自動で実装しました。マージする前に、人が中身を確認してください。"
+アプリの議論から作られた Issue を、Mac の Claude（scripts/issue-worker）が自動で実装しました。CI が通り、自動レビューで問題がなければ自動でマージします。"
 PR_URL=$(gh pr create -R "$REPO" --base main --head "$BRANCH" --title "$TITLE" --body "$PR_BODY" 2>>"$LOG") || fail "PR の作成に失敗"
 say "PR を作りました: $PR_URL"
 
 # --- 5) Issue に印を付ける ---
 gh issue edit "$NUMBER" -R "$REPO" --remove-label "$WORKING_LABEL" --add-label "$DONE_LABEL" >> "$LOG" 2>&1
 gh issue comment "$NUMBER" -R "$REPO" --body "Mac の Claude が実装して、プルリクエストを作りました: $PR_URL" >> "$LOG" 2>&1
+
+# --- 6) 自動マージ（条件を満たさなければ PR を残して人に任せる） ---
+hold() {
+  say "自動マージしません: $1"
+  gh pr comment "$PR_URL" -R "$REPO" --body "自動マージはしませんでした（$1）。人が確認してマージしてください。" >> "$LOG" 2>&1
+  gh pr edit "$PR_URL" -R "$REPO" --add-label "$HOLD_LABEL" >> "$LOG" 2>&1
+  exit 0
+}
+
+# migrations/ はマージするとそのまま本番の DB に適用されるので、人が確認する
+printf '%s\n' "$CHANGED" | grep -q '^migrations/' && hold "データベースの変更（migrations/）を含むため"
+
+# CI（check）の結果を待つ。PR を作った直後はチェックがまだ登録されていないことがある
+# （登録前は「no checks reported」で成功扱いになるので、check ジョブの行が出るまで待つ）
+CHECK_FOUND=""
+for _ in $(seq 1 30); do
+  if gh pr checks "$PR_URL" -R "$REPO" 2>/dev/null | grep -q "^check"$'\t'; then CHECK_FOUND=1; break; fi
+  sleep 20
+done
+[ -n "$CHECK_FOUND" ] || hold "CI が始まらなかったため"
+timeout 1800 gh pr checks "$PR_URL" -R "$REPO" --watch --interval 20 --fail-fast >> "$LOG" 2>&1 || hold "CI が通らなかったため"
+
+# 別の Claude に、読むだけの権限でレビューさせる
+git diff origin/main...HEAD > "$STATE/pr.diff"
+[ "$(wc -c < "$STATE/pr.diff")" -le 300000 ] || hold "差分が大きすぎて自動レビューできないため"
+RPROMPT=$(node "$HERE/render-prompt.mjs" "$HERE/review-prompt.md" "$STATE/issue.json" "$NUMBER" "$STATE/pr.diff") || hold "レビューの指示を作れないため"
+say "レビューの Claude を起動します"
+caffeinate -i timeout 1200 claude -p "$RPROMPT" \
+  --permission-mode dontAsk \
+  --allowedTools "Read,Glob,Grep" \
+  --disallowedTools "Bash,Edit,Write,WebFetch,WebSearch" \
+  --setting-sources project \
+  --strict-mcp-config \
+  --output-format json \
+  > "$STATE/review-out.json" 2>>"$LOG" || hold "自動レビューが途中で終わったため"
+VERDICT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.result??""))}catch{}' "$STATE/review-out.json")
+echo "$VERDICT" >> "$LOG"
+VFIRST=$(printf '%s\n' "$VERDICT" | grep -v '^```' | sed -n '/[^[:space:]]/{p;q;}')
+[ "$VFIRST" = "APPROVE" ] || hold "自動レビューが承認しなかったため: ${VFIRST#REJECT:}"
+
+# レビューのあとに main やブランチが動いていたらやめる（レビューした差分と同じものだけをマージする）
+HEAD_SHA=$(git rev-parse HEAD)
+gh pr merge "$PR_URL" -R "$REPO" --merge --delete-branch --match-head-commit "$HEAD_SHA" >> "$LOG" 2>&1 || hold "マージできなかったため"
+say "マージしました: $PR_URL"
 exit 0

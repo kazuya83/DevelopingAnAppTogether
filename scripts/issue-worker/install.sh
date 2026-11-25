@@ -23,7 +23,7 @@ GIT_EMAIL="${GIT_EMAIL:-$(git -C "$HERE" log -1 --format=%ae origin/main)}"
 
 mkdir -p "$INSTALL_DIR"
 # 動いている最中の worker.sh を上書きすると、bash が途中から壊れた中身を読むので、別名でコピーしてから入れ替える
-for f in worker.sh prompt.md render-prompt.mjs; do
+for f in worker.sh prompt.md review-prompt.md render-prompt.mjs; do
   cp "$HERE/$f" "$INSTALL_DIR/.$f.new" && mv -f "$INSTALL_DIR/.$f.new" "$INSTALL_DIR/$f"
 done
 chmod +x "$INSTALL_DIR/worker.sh"
@@ -41,6 +41,7 @@ CONF
 gh label create claude-working    -R "$REPO" --color FBCA04 --description "Mac の Claude が開発中" 2>/dev/null || true
 gh label create claude-pr-created -R "$REPO" --color 0E8A16 --description "Mac の Claude が PR を作った" 2>/dev/null || true
 gh label create claude-failed     -R "$REPO" --color 5319E7 --description "Mac の Claude が開発できなかった（人が確認）" 2>/dev/null || true
+gh label create claude-needs-review -R "$REPO" --color D93F0B --description "自動マージしなかった PR（人が確認）" 2>/dev/null || true
 
 cat > "$PLIST" <<PL
 <?xml version="1.0" encoding="UTF-8"?>
