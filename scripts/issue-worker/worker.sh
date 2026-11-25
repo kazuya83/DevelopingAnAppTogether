@@ -4,7 +4,7 @@
 #
 #   1) gh で「まだ誰も着手していない from-app の Issue」を探す（Claude は使わないのでトークン 0）
 #   2) 無ければ終わる。あれば 1 件だけ「claude-working」ラベルを付けて着手の印にする
-#   3) 作業用の worktree を main の最新にして、claude -p に開発させる（ファイルの変更まで）
+#   3) 作業用のリポジトリ（内蔵ディスク）を main の最新にして、claude -p に開発させる（ファイルの変更まで）
 #   4) このスクリプトが確認（npm run check、変えてはいけない場所）→ コミット → プッシュ → PR 作成
 #   5) Issue のラベルを「claude-pr-created」か「claude-failed」に変える
 #
@@ -16,7 +16,7 @@ export LANG=ja_JP.UTF-8
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=/dev/null
-. "$HERE/config.sh"   # REPO, SRC_REPO_DIR, WORK_DIR, DAILY_LIMIT, CLAUDE_TIMEOUT を決める（install.sh が作る）
+. "$HERE/config.sh"   # REPO, WORK_DIR, DAILY_LIMIT, CLAUDE_TIMEOUT を決める（install.sh が作る）
 
 SOURCE_LABEL="from-app"
 WORKING_LABEL="claude-working"
@@ -37,8 +37,15 @@ if ! mkdir "$LOCK" 2>/dev/null; then
 fi
 trap 'rm -rf "$LOCK"' EXIT
 
-# 外付けディスクがつながっていないときは何もしない
-[ -d "$SRC_REPO_DIR/.git" ] || [ -f "$SRC_REPO_DIR/.git" ] || exit 0
+# 作業場所は内蔵ディスク（launchd から動くプログラムは、許可なしに外付けディスクを読めないため）。
+# 空きが少ないときは、Issue に印を付ける前にやめる（次の回にまた試す）
+FREE_MB=$(df -m "$HOME" | awk 'NR==2{print $4}')
+if [ "${FREE_MB:-0}" -lt "$MIN_FREE_MB" ]; then say "ディスクの空きが ${FREE_MB}MB しかないので、着手しません"; exit 0; fi
+if [ ! -d "$WORK_DIR/.git" ]; then
+  say "作業用のリポジトリを $WORK_DIR に作ります"
+  git clone -q "https://github.com/$REPO.git" "$WORK_DIR" >> "$LOG" 2>&1 || { say "clone に失敗"; rm -rf "$WORK_DIR"; exit 0; }
+fi
+git -C "$WORK_DIR" fetch -q origin main >> "$LOG" 2>&1 || { say "git fetch に失敗（着手しません）"; exit 0; }
 
 # --- 1 日の上限 ---
 TODAY_COUNT_FILE="$STATE/count-$(date +%F)"
@@ -63,12 +70,8 @@ fail() {
   exit 1
 }
 
-# --- 2) 作業用の worktree を main の最新にする ---
+# --- 2) 作業用のリポジトリを main の最新にする ---
 BRANCH="issue/$NUMBER"
-git -C "$SRC_REPO_DIR" fetch -q origin main >> "$LOG" 2>&1 || fail "git fetch に失敗"
-if [ ! -e "$WORK_DIR/.git" ]; then
-  git -C "$SRC_REPO_DIR" worktree add --detach "$WORK_DIR" origin/main >> "$LOG" 2>&1 || fail "worktree の作成に失敗"
-fi
 cd "$WORK_DIR" || fail "作業フォルダに入れない"
 git reset -q --hard && git clean -qfd >> "$LOG" 2>&1
 git checkout -q -B "$BRANCH" origin/main >> "$LOG" 2>&1 || fail "ブランチの作成に失敗"
@@ -126,9 +129,8 @@ BODY=$(node -e '
   process.stdout.write(r.replace(/^\s*TITLE:.*\n?/m,"").trim());' "$RESULT")
 [ -n "$TITLE" ] || TITLE="Issue #$NUMBER の提案を実装"
 
-git -c user.name="$(git -C "$SRC_REPO_DIR" config user.name)" -c user.email="$(git -C "$SRC_REPO_DIR" config user.email)" \
-  commit -q -m "$TITLE" -m "Issue #$NUMBER の提案を、Mac の Claude が自動で実装しました。" >> "$LOG" 2>&1 || fail "コミットに失敗"
-git push -q -f origin "$BRANCH" >> "$LOG" 2>&1 || fail "プッシュに失敗"
+git -c user.name="$GIT_NAME" -c user.email="$GIT_EMAIL" commit -q -m "$TITLE" -m "Issue #$NUMBER の提案を、Mac の Claude が自動で実装しました。" >> "$LOG" 2>&1 || fail "コミットに失敗"
+git -c credential.helper= -c credential.helper='!gh auth git-credential' push -q -f origin "$BRANCH" >> "$LOG" 2>&1 || fail "プッシュに失敗"
 
 PR_BODY="$BODY
 

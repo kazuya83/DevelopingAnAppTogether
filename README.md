@@ -136,7 +136,7 @@ gh issue list --label from-app で、まだ誰も着手していない Issue を
   ├─ 無い → 何もせず終わる
   └─ ある → 古い順に 1 件だけ着手
         1. Issue にラベル claude-working を付ける（同じ Issue を二重に拾わない）
-        2. 作業用の worktree（<リポジトリ>.issue-worker）を main の最新にし、ブランチ issue/<番号> を作る
+        2. 作業用のリポジトリ（~/work/minna-issue-worker）を main の最新にし、ブランチ issue/<番号> を作る
         3. claude -p に開発させる（ファイルを変えて npm run check を通すところまで）
         4. スクリプトが確認 → コミット → プッシュ → PR 作成（本文に Closes #<番号>）
         5. Issue のラベルを claude-pr-created（失敗・見送りなら claude-failed）に変え、コメントする
@@ -145,6 +145,8 @@ gh issue list --label from-app で、まだ誰も着手していない Issue を
 - **安全のため**：Issue の本文は誰でも書けるので、Claude に許可するのはファイルの読み書きと `npm run check`・`git status/diff/log` だけです。`gh`・`git push`・Web へのアクセス・MCP は使えません。PR を作るのはスクリプトで、`.github/`・`scripts/`・`ios/`・`wrangler.jsonc`・`package*.json` が変わっていたら PR を作らずに `claude-failed` にします。**マージは人が判断します。**
 - **上限**：1 日に着手するのは 3 件まで、1 件の開発は 60 分まで。
 - 1 回の開発が 10 分を超えても、次の回は重ならずに待ちます。
+- 作業用のリポジトリは内蔵ディスクに置きます。launchd から動くプログラムは、許可しない限り外付けディスクや「書類」フォルダを読めないためです。内蔵ディスクの空きが 1.5GB より少ないときは着手しません。
+- 上限や間隔は `DAILY_LIMIT=5 INTERVAL=600 CLAUDE_TIMEOUT=3600 MIN_FREE_MB=1500 scripts/issue-worker/install.sh` のように変えられます。
 
 ### 入れる・止める
 
@@ -153,7 +155,6 @@ scripts/issue-worker/install.sh     # 入れる（scripts/issue-worker を変え
 scripts/issue-worker/uninstall.sh   # 止める
 ```
 
-- 上限や間隔は `DAILY_LIMIT=5 INTERVAL=600 CLAUDE_TIMEOUT=3600 scripts/issue-worker/install.sh` のように変えられます。
 - ログは `~/.local/share/minna-issue-worker/logs/` にあります。
 - `claude-failed` が付いた Issue は拾い直しません。もう一度試すときは、そのラベルを外してください。
 
