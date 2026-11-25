@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 開発用（Debug ビルド）。?mode=developer は Apple の CDN を通さず、端末が直接サーバーから設定ファイルを読む。
+	     iPhone の「設定」→「デベロッパ」→「Associated Domains Development」をオンにすると有効になる -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>webcredentials:$(WEB_APP_DOMAIN)</string>
+		<string>webcredentials:$(WEB_APP_DOMAIN)?mode=developer</string>
+	</array>
+</dict>
+</plist>
