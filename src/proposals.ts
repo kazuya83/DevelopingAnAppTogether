@@ -1,6 +1,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "./types";
 import { maybeCreateIssue } from "./github";
+import { checkProposal } from "./moderation";
 import { fail, intParam, isAdmin, issueThreshold, now, readJson, requireUser, rpInfo, str } from "./util";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -52,6 +53,9 @@ proposals.post("/", async (c) => {
   const body = await readJson(c);
   const title = str(body.title, "タイトル", { max: 100 });
   const text = str(body.body, "内容", { max: 4000 });
+  // いいねが集まると Issue になり自動で開発されるので、リポジトリへの操作・攻撃・アプリの削除などは受け付けない
+  const rejected = checkProposal(title, text);
+  if (rejected) fail(400, rejected.message);
   const recent = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM proposals WHERE user_id = ? AND created_at > ?")
     .bind(user.id, now() - DAY)
     .first<{ n: number }>();
