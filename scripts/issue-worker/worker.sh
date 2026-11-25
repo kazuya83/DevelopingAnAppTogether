@@ -130,10 +130,10 @@ caffeinate -i timeout "$CLAUDE_TIMEOUT" claude -p "$PROMPT" \
   --output-format json \
   > "$STATE/claude-out.json" 2>>"$LOG"
 RC=$?
-say "Claude が終わりました（code $RC）"
+say "Claude が終わりました（code ${RC}）"
 RESULT=$(node -e 'try{const j=JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));process.stdout.write(String(j.result??""))}catch{}' "$STATE/claude-out.json")
 echo "$RESULT" >> "$LOG"
-[ $RC -eq 0 ] || fail "Claude が途中で終わりました（code $RC）"
+[ $RC -eq 0 ] || fail "Claude が途中で終わりました（code ${RC}）"
 
 FIRST=$(printf '%s\n' "$RESULT" | sed -n '/[^[:space:]]/{p;q;}' | sed 's/^```.*//')
 case "$FIRST" in
