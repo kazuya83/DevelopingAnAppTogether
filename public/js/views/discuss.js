@@ -167,6 +167,8 @@ export async function discussDetail(el, id) {
           const r = p.liked ? await api.del(`/proposals/${id}/like`) : await api.post(`/proposals/${id}/like`);
           Object.assign(p, r, { liked: !!r.liked });
           renderLike();
+          // いいねしたときはハートを弾ませる
+          if (p.liked) likeArea.querySelector(".heart")?.classList.add("pop");
           if (r.status === "issued" && p.issue_url) toast("いいねが集まり、GitHub Issue になりました！");
         } catch (err) {
           toast(err.message);
