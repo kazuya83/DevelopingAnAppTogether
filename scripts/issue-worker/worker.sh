@@ -47,20 +47,6 @@ if [ ! -d "$WORK_DIR/.git" ]; then
 fi
 git -C "$WORK_DIR" fetch -q origin main >> "$LOG" 2>&1 || { say "git fetch に失敗（着手しません）"; exit 0; }
 
-# --- リポジトリの「操作の制限」（Issue・コメント・PR を共同作業者だけにする）を切らさない ---
-# GitHub の制限は最長 6 か月で切れるので、1 日 1 回確かめて、残り 30 日を切っていたら延長する
-LIMIT_MARK="$STATE/interaction-limit-$(date +%F)"
-if [ ! -f "$LIMIT_MARK" ]; then
-  EXPIRES=$(gh api "repos/$REPO/interaction-limits" --jq '.expires_at // empty' 2>>"$LOG")
-  SOON=$(date -u -v+30d +%Y-%m-%dT%H:%M:%SZ)
-  if [ -z "$EXPIRES" ] || [[ "$EXPIRES" < "$SOON" ]]; then
-    if gh api -X PUT "repos/$REPO/interaction-limits" -f limit=collaborators_only -f expiry=six_months >> "$LOG" 2>&1; then
-      say "操作の制限を延長しました"; touch "$LIMIT_MARK"
-    else say "WARN: 操作の制限を延長できませんでした（次の回にまた試します）"; fi
-  else touch "$LIMIT_MARK"; fi
-  find "$STATE" -name 'interaction-limit-*' -mtime +3 -delete 2>/dev/null
-fi
-
 # --- 1 日の上限 ---
 TODAY_COUNT_FILE="$STATE/count-$(date +%F)"
 COUNT=$(cat "$TODAY_COUNT_FILE" 2>/dev/null || echo 0)
