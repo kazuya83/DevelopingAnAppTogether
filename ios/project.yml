@@ -10,7 +10,7 @@ settings:
     DEVELOPMENT_TEAM: ""
     PRODUCT_BUNDLE_IDENTIFIER: com.example.developinganapptogether
     # Web（Cloudflare Workers）のドメイン。パスキーの Associated Domains にも使う
-    WEB_APP_DOMAIN: developing-an-app-together.example.workers.dev
+    WEB_APP_DOMAIN: developing-an-app-together.minna-dev.workers.dev
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
     SWIFT_VERSION: "5.0"
