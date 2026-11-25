@@ -15,7 +15,7 @@
       "binding": "DB",
       "database_name": "developing-an-app-together",
       // `npx wrangler d1 create developing-an-app-together` で表示された ID に置き換える
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "f5c4e442-51aa-4e6d-9249-b0a1d8ba62c3",
       "migrations_dir": "migrations"
     }
   ],
