@@ -29,7 +29,7 @@
     // Issue に付けるラベル（Mac の Claude はこのラベルの Issue を拾う）
     "GITHUB_ISSUE_LABEL": "from-app",
     // 管理者のユーザ名（カンマ区切り）。投稿・コメントの削除と通報の確認ができる
-    "ADMIN_USERNAMES": "",
+    "ADMIN_USERNAMES": "hoge",
     // パスキー用。iOS アプリの「TeamID.バンドルID」（例: ABCDE12345.com.example.together）
     "APPLE_APP_ID": "",
     "RP_NAME": "みんなでアプリ開発"
