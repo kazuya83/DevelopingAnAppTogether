@@ -1,7 +1,7 @@
 import { Hono, type Context } from "hono";
 import type { AppEnv } from "./types";
 import { maybeCreateIssue } from "./github";
-import { fail, intParam, isAdmin, likeThreshold, now, readJson, requireUser, rpInfo, str } from "./util";
+import { fail, intParam, isAdmin, issueThreshold, now, readJson, requireUser, rpInfo, str } from "./util";
 
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_PROPOSALS_PER_DAY = 10;
@@ -43,7 +43,8 @@ proposals.get("/", async (c) => {
   )
     .bind(viewer, viewer)
     .all();
-  return c.json({ proposals: results, threshold: likeThreshold(c.env) });
+  const t = await issueThreshold(c.env);
+  return c.json({ proposals: results, threshold: t.threshold, thresholdInfo: t });
 });
 
 proposals.post("/", async (c) => {
@@ -88,7 +89,8 @@ proposals.get("/:id", async (c) => {
         .bind(viewer, proposal.user_id ?? "")
         .first())
     : false;
-  return c.json({ proposal, comments, blockedAuthor: blocked, threshold: likeThreshold(c.env) });
+  const t = await issueThreshold(c.env);
+  return c.json({ proposal, comments, blockedAuthor: blocked, threshold: t.threshold, thresholdInfo: t });
 });
 
 proposals.delete("/:id", async (c) => {

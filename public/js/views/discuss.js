@@ -10,6 +10,7 @@ import {
   linkify,
   proposalCard,
   statusBadge,
+  thresholdNote,
   timeAgo,
   toast,
 } from "../ui.js";
@@ -29,7 +30,7 @@ export async function discussList(el) {
       <h1>議論</h1>
       <a class="btn small primary" href="#/discuss/new">＋ 提案する</a>
     </header>
-    <p class="lead">アプリに入れたい機能や直してほしいところを提案しよう。いいねが <b>${data.threshold}</b> 件集まると GitHub の Issue になり、開発が始まります。</p>
+    <p class="lead">アプリに入れたい機能や直してほしいところを提案しよう。いいねが <b>${data.threshold}</b> 件集まると GitHub の Issue になり、開発が始まります。${thresholdNote(data.thresholdInfo) ? `<br />${thresholdNote(data.thresholdInfo)}` : ""}</p>
     <div class="segmented">
       ${SORTS.map(([k, label]) => `<button data-sort="${k}" class="${k === currentSort ? "active" : ""}">${label}</button>`).join("")}
     </div>
@@ -156,7 +157,8 @@ export async function discussDetail(el, id) {
       <button class="like-btn ${p.liked ? "liked" : ""}" id="like">
         <span class="heart">${p.liked ? "♥" : "♡"}</span> いいね <b>${p.like_count}</b>
       </button>
-      ${likeBox(p, data.threshold)}`;
+      ${likeBox(p, data.threshold)}
+      ${thresholdNote(data.thresholdInfo) ? `<div class="hint">${thresholdNote(data.thresholdInfo)}</div>` : ""}`;
     likeArea.querySelector("#like").addEventListener("click", (e) => {
       if (!requireLogin()) return;
       busy(e.currentTarget, async () => {
