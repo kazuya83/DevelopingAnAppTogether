@@ -62,5 +62,5 @@ PL
 mkdir -p "$INSTALL_DIR/logs"
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 launchctl bootstrap "gui/$(id -u)" "$PLIST"
-echo "入れました: $LABEL（${INTERVAL} 秒おき、1 日 ${DAILY_LIMIT} 件まで）"
+echo "入れました: ${LABEL}（${INTERVAL} 秒おき、1 日 ${DAILY_LIMIT} 件まで）"
 echo "ログ: $INSTALL_DIR/logs/"
