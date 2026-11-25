@@ -1,0 +1,51 @@
+name: Issue guard
+
+# Issue はアプリの「議論」から作るもの。他の人が Issue に触れないようにする（PR は誰でも出せる）。
+# - 共同作業者以外が作った Issue は、案内を書いて閉じる
+# - すべての Issue をロックして、共同作業者以外はコメントできないようにする
+# 手動で実行（workflow_dispatch）すると、ロックされていない既存の Issue をまとめてロックする。
+on:
+  issues:
+    types: [opened, reopened]
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const trusted = ["OWNER", "COLLABORATOR", "MEMBER"];
+            const lock = async (issue_number) => {
+              try {
+                await github.rest.issues.lock({ ...context.repo, issue_number });
+              } catch (e) {
+                core.warning(`#${issue_number} をロックできませんでした: ${e.message}`);
+              }
+            };
+
+            if (context.eventName === "workflow_dispatch") {
+              const issues = await github.paginate(github.rest.issues.listForRepo, {
+                ...context.repo, state: "all", per_page: 100,
+              });
+              for (const i of issues) {
+                if (!i.pull_request && !i.locked) await lock(i.number);
+              }
+              return;
+            }
+
+            const issue = context.payload.issue;
+            if (!trusted.includes(issue.author_association)) {
+              await github.rest.issues.createComment({
+                ...context.repo, issue_number: issue.number,
+                body: "このリポジトリの Issue は、アプリの「議論」でいいねが集まった提案から自動で作られます。提案はアプリから投稿してください。コードの変更はプルリクエストで受け付けています。",
+              });
+              await github.rest.issues.update({
+                ...context.repo, issue_number: issue.number, state: "closed", state_reason: "not_planned",
+              });
+            }
+            if (!issue.locked) await lock(issue.number);
