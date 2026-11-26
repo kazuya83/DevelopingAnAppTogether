@@ -22,7 +22,9 @@ targets:
       - path: App
     settings:
       base:
-        PRODUCT_NAME: みんなでアプリ開発
+        # ファイル名（.app）は英字にする。日本語（濁点を含む）だと App Store へのアップロードで署名が合わなくなる。
+        # ホーム画面の名前は Info.plist の CFBundleDisplayName（みんなでアプリ開発）
+        PRODUCT_NAME: DevelopingAnAppTogether
         CODE_SIGN_ENTITLEMENTS: App/App.entitlements
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
