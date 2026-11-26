@@ -320,3 +320,9 @@ a.card:active { transform: scale(0.98); box-shadow: none; }
 .btn { white-space: nowrap; }
 .form label.btn { display: inline-flex; margin-bottom: 0; font-size: 14px; }
 .avatar-edit .row-buttons { justify-content: center; }
+
+/* 長押ししても、リンクのメニューや文字の選択が出ないようにする（アプリらしく）。
+   提案・コメントの本文と入力欄は、コピーできるように選択できるままにする */
+body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+input, textarea, .proposal-detail .body, .comment .body { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
+img, svg { -webkit-user-drag: none; }

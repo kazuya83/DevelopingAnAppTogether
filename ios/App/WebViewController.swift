@@ -36,7 +36,10 @@ final class WebViewController: UIViewController {
         webView.isOpaque = false // 読み込み前に白く光らないようにする
         webView.backgroundColor = .clear
         webView.scrollView.contentInsetAdjustmentBehavior = .never
-        webView.allowsBackForwardNavigationGestures = true
+        // 画面の移動はアプリの「戻る」ボタンで行う。左右のスワイプで履歴を戻る・進むのはやめる
+        webView.allowsBackForwardNavigationGestures = false
+        // リンクやアイコンを長押ししたときに、リンク先のプレビューやメニューを出さない
+        webView.allowsLinkPreview = false
         #if DEBUG
         if #available(iOS 16.4, *) { webView.isInspectable = true } // Mac の Safari から調べられるようにする
         #endif
