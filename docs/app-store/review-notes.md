@@ -26,7 +26,7 @@ USER-GENERATED CONTENT (Guideline 1.2)
 - Users must agree to the Terms of Use when they register (link on the registration screen). The terms prohibit objectionable content and abusive users (zero tolerance).
 - Report: "..." menu on any proposal, comment or user -> "通報" (Report).
 - Block: "..." menu on a user's profile -> "ブロックする" (Block). Blocked users' content is hidden.
-- Moderation: reports notify the administrator immediately by push notification; the administrator reviews them in Settings and removes content / suspends accounts within 24 hours.
+- Moderation: reports notify the administrator immediately by push notification; the administrator reviews them in Settings and removes the objectionable proposals or comments within 24 hours.
 - Ideas that ask to change login or posting rules, attack the service, or delete the app are rejected automatically.
 
 ACCOUNT DELETION (Guideline 5.1.1(v))
