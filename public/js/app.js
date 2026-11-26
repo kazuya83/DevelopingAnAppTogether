@@ -42,8 +42,8 @@ const routes = [
 ];
 
 function mainView(el) {
-  // メインは白紙（これからみんなで作っていく場所）
-  el.innerHTML = "";
+  // メインはこれからみんなで作っていく場所。いまは「hope」を大きく表示する
+  el.innerHTML = `<div class="main-hope">hope</div>`;
 }
 
 let renderSeq = 0;
