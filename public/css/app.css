@@ -368,3 +368,17 @@ img, svg { -webkit-user-drag: none; }
 
 /* 設定の下の、規約などへのリンク */
 .legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; margin: 8px 0 24px; }
+
+/* 画面の上のヘッダー（タイトル・戻る・ボタン）を、下へスクロールしても上に固定する。
+   ノッチなどの安全領域の分まで背景を広げ、下に流れる内容が透けて重ならないようにする */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  margin: calc(-1 * (var(--safe-top) + 8px)) -16px 8px;
+  padding: calc(var(--safe-top) + 8px) 16px 4px;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+}
