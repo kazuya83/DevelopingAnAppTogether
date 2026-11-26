@@ -84,9 +84,19 @@ export function actionSheet(items) {
   });
 }
 
+/** Issue になった後の開発の進み具合（サーバが GitHub の Issue から 5 分ごとに取り込む） */
+export const DEV_STATUS = {
+  waiting: "開発待ち",
+  developing: "開発中",
+  review: "確認中",
+  pending: "保留",
+  released: "反映済み",
+  declined: "見送り",
+};
+
 export const statusBadge = (p) =>
   p.status === "issued"
-    ? `<span class="badge issued">Issue #${esc(p.issue_number)}</span>`
+    ? `<span class="badge dev-${esc(p.dev_status || "waiting")}">${DEV_STATUS[p.dev_status] ?? DEV_STATUS.waiting}</span>`
     : p.status === "creating"
       ? `<span class="badge creating">Issue 作成中</span>`
       : "";

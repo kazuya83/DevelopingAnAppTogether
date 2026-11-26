@@ -15,7 +15,7 @@ export const NOT_BLOCKED = (col: string) =>
 export const viewerId = (c: Context<AppEnv>) => c.get("user")?.id ?? "";
 
 export const PROPOSAL_COLUMNS = `
-  p.id, p.title, p.status, p.issue_number, p.issue_url, p.created_at,
+  p.id, p.title, p.status, p.issue_number, p.issue_url, p.created_at, p.issued_at, p.dev_status, p.dev_status_at,
   p.user_id, u.username, u.display_name, u.avatar_updated_at,
   (SELECT COUNT(*) FROM likes WHERE proposal_id = p.id) AS like_count,
   (SELECT COUNT(*) FROM comments WHERE proposal_id = p.id) AS comment_count`;

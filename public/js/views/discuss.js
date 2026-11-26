@@ -8,6 +8,7 @@ import {
   busy,
   empty,
   esc,
+  formatDate,
   linkify,
   proposalCard,
   statusBadge,
@@ -81,11 +82,36 @@ export async function discussNew(el) {
   });
 }
 
+/** Issue になった後の進み具合：Issue 化 → 開発 → 確認 → 反映 */
+const DEV_STEPS = ["Issue 化", "開発", "確認", "反映"];
+const DEV_STEP_INDEX = { waiting: 1, developing: 1, review: 2, pending: 2, released: 3, declined: -1 };
+const DEV_MESSAGE = {
+  waiting: "Issue になりました。開発が始まるのを待っています。",
+  developing: "Claude が開発しています。",
+  review: "開発が終わり、変更を確認しています。確認が済むとアプリに反映されます。",
+  pending: "自動では反映できなかったため、管理者が確認しています。",
+  released: "アプリに反映されました。",
+  declined: "この提案は開発しないことになりました。理由は Issue をご覧ください。",
+};
+
+function devProgress(p) {
+  const st = p.dev_status || "waiting";
+  if (st === "declined") return "";
+  const cur = DEV_STEP_INDEX[st];
+  return `<ol class="dev-steps">${DEV_STEPS.map((label, i) => {
+    const cls = i < cur || st === "released" ? "done" : i === cur ? "current" : "";
+    return `<li class="${cls}"><span class="dot">${cls === "done" ? icon("check", { size: 14, cls: "plain" }) : ""}</span>${label}</li>`;
+  }).join("")}</ol>`;
+}
+
 function likeBox(p, threshold) {
   if (p.status === "issued") {
-    return `<div class="issue-box done">
-      <div class="issue-done">${icon("check", { size: 20 })}<span>いいねが集まり <b>GitHub Issue #${esc(p.issue_number)}</b> になりました</span></div>
-      <a class="btn small" href="${esc(p.issue_url)}" target="_blank" rel="noopener">Issue を見る</a>
+    const st = p.dev_status || "waiting";
+    const when = st === "released" && p.dev_status_at ? `<span class="muted">（${formatDate(p.dev_status_at)}）</span>` : "";
+    return `<div class="issue-box issued dev-${esc(st)}">
+      ${devProgress(p)}
+      <div class="dev-message">${esc(DEV_MESSAGE[st] ?? DEV_MESSAGE.waiting)}${when}</div>
+      <a class="btn small" href="${esc(p.issue_url)}" target="_blank" rel="noopener">GitHub Issue #${esc(p.issue_number)} を見る</a>
     </div>`;
   }
   const pct = Math.min(100, Math.round((p.like_count / threshold) * 100));
