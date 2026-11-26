@@ -7,5 +7,8 @@
 	<array>
 		<string>webcredentials:$(WEB_APP_DOMAIN)</string>
 	</array>
+	<!-- 通知（APNs）。開発用ビルドは development、App Store・TestFlight は production -->
+	<key>aps-environment</key>
+	<string>production</string>
 </dict>
 </plist>

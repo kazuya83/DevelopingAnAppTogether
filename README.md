@@ -169,6 +169,18 @@ scripts/issue-worker/uninstall.sh   # 止める
 - ログは `~/.local/share/minna-issue-worker/logs/` にあります。
 - `claude-failed` が付いた Issue は拾い直しません。もう一度試すときは、そのラベルを外してください。
 
+## 通知（iOS アプリ）
+
+自分の提案が「開発が決まった・AI が開発を始めた・アプリに反映された・見送りになった」とき、自分の提案にコメントが付いたとき、管理者には通報があったときに、iOS アプリへ通知を送ります（`src/push.ts`。Cloudflare Workers から APNs に直接送る）。
+
+- アプリの設定画面の「通知」でオンにします。提案を投稿したあとにも一度だけ聞きます。ブラウザ版には出ません。
+- 鍵の準備（1 回だけ）：Apple Developer の Keys で APNs の鍵（.p8）を作り、`npx wrangler secret put APNS_KEY < AuthKey_XXXX.p8` で入れ、`wrangler.jsonc` の `APNS_KEY_ID` に鍵の ID を書きます。`APNS_KEY_ID` が空のあいだは通知を送りません。
+- 開発用ビルド（Debug）は sandbox、TestFlight・App Store は production の APNs に届きます。
+
+## 利用規約・プライバシーポリシー・サポート
+
+`public/legal/` にあり、`/legal/terms`・`/legal/privacy`・`/legal/support` で開けます。ログイン画面と設定画面から行けます（App Store の審査で必要）。
+
 ## 貢献度
 
 - スコアの計算：提案 3 点、Issue 化 10 点、コメント 1 点、もらったいいね 1 点（自分のいいねは数えません）。

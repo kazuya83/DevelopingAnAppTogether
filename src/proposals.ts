@@ -2,6 +2,7 @@ import { Hono, type Context } from "hono";
 import type { AppEnv } from "./types";
 import { maybeCreateIssue } from "./github";
 import { checkProposal } from "./moderation";
+import { notifyUser } from "./push";
 import { fail, intParam, isAdmin, issueThreshold, now, readJson, requireUser, rpInfo, str } from "./util";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -157,6 +158,23 @@ proposals.post("/:id/comments", async (c) => {
   await c.env.DB.prepare("INSERT INTO comments (proposal_id, user_id, body, created_at) VALUES (?, ?, ?, ?)")
     .bind(id, user.id, text, now())
     .run();
+  // 提案者に知らせる（自分のコメントと、提案者がブロックしている人のコメントは知らせない）
+  const p = await c.env.DB.prepare(
+    `SELECT user_id, title FROM proposals
+      WHERE id = ? AND user_id IS NOT NULL AND user_id != ?
+        AND NOT EXISTS (SELECT 1 FROM blocks WHERE blocker_id = proposals.user_id AND blocked_id = ?)`,
+  )
+    .bind(id, user.id, user.id)
+    .first<{ user_id: string; title: string }>();
+  if (p) {
+    c.executionCtx.waitUntil(
+      notifyUser(c.env, p.user_id, {
+        title: `${user.display_name}さんがコメントしました`,
+        body: `「${p.title}」: ${text.length > 80 ? `${text.slice(0, 80)}…` : text}`,
+        path: `#/discuss/${id}`,
+      }),
+    );
+  }
   return c.json({ ok: true });
 });
 

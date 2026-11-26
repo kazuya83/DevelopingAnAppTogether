@@ -2,7 +2,8 @@ import { Hono } from "hono";
 import type { AppEnv } from "./types";
 import { destroySession } from "./session";
 import { PROPOSAL_COLUMNS, viewerId } from "./proposals";
-import { fail, isAdmin, issueThreshold, now, readJson, requireUser, str } from "./util";
+import { notifyUser } from "./push";
+import { adminUsernames, fail, isAdmin, issueThreshold, now, readJson, requireUser, str } from "./util";
 
 const DAY = 24 * 60 * 60 * 1000;
 const JST = 9 * 60 * 60 * 1000;
@@ -116,6 +117,31 @@ me.patch("/", async (c) => {
   return c.json({ ok: true });
 });
 
+/** iOS アプリの通知の宛先を登録する（同じ端末で別のユーザがログインしたら付け替える） */
+me.post("/push-token", async (c) => {
+  const user = requireUser(c);
+  const body = await readJson(c);
+  const token = typeof body.token === "string" ? body.token.toLowerCase() : "";
+  if (!/^[0-9a-f]{64,200}$/.test(token)) fail(400, "通知の宛先が正しくありません");
+  const env = body.env === "sandbox" ? "sandbox" : "production";
+  await c.env.DB.prepare(
+    `INSERT INTO push_tokens (token, user_id, env, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id, env = excluded.env, updated_at = excluded.updated_at`,
+  )
+    .bind(token, user.id, env, now(), now())
+    .run();
+  return c.json({ ok: true });
+});
+
+/** ログアウトするときに、この端末への通知を止める */
+me.delete("/push-token/:token", async (c) => {
+  const user = requireUser(c);
+  await c.env.DB.prepare("DELETE FROM push_tokens WHERE token = ? AND user_id = ?")
+    .bind(c.req.param("token").toLowerCase(), user.id)
+    .run();
+  return c.json({ ok: true });
+});
+
 /** アカウント削除（App Store の審査で必須） */
 me.delete("/", async (c) => {
   const user = requireUser(c);
@@ -123,6 +149,7 @@ me.delete("/", async (c) => {
     // Issue になった提案は GitHub と対応しているので、本文を残して提案者だけ消す
     c.env.DB.prepare("UPDATE proposals SET user_id = NULL WHERE user_id = ? AND status != 'open'").bind(user.id),
     c.env.DB.prepare("DELETE FROM proposals WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM push_tokens WHERE user_id = ?").bind(user.id),
     // パスキー・セッション・いいね・コメント・ブロックは外部キーで一緒に消える
     c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
   ]);
@@ -191,6 +218,26 @@ reports.post("/", async (c) => {
   )
     .bind(user.id, type, targetId, reason, now())
     .run();
+  // 規約で「24 時間以内に対応」としているので、管理者にすぐ知らせる
+  const admins = adminUsernames(c.env);
+  if (admins.length) {
+    const { results } = await c.env.DB.prepare(
+      "SELECT id FROM users WHERE lower(username) IN (SELECT value FROM json_each(?))",
+    )
+      .bind(JSON.stringify(admins))
+      .all<{ id: string }>();
+    c.executionCtx.waitUntil(
+      Promise.all(
+        results.map((a) =>
+          notifyUser(c.env, a.id, {
+            title: "通報がありました",
+            body: `理由: ${reason.length > 80 ? `${reason.slice(0, 80)}…` : reason}`,
+            path: "#/user/settings",
+          }),
+        ),
+      ),
+    );
+  }
   return c.json({ ok: true });
 });
 

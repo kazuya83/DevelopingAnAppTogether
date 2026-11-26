@@ -1,3 +1,4 @@
+import { notifyUser } from "./push";
 import type { Env } from "./types";
 import { issueThreshold, now, type ThresholdInfo } from "./util";
 
@@ -5,6 +6,7 @@ const STUCK_MS = 5 * 60 * 1000;
 
 interface ProposalForIssue {
   id: number;
+  user_id: string | null;
   title: string;
   body: string;
   username: string | null;
@@ -90,7 +92,7 @@ export async function maybeCreateIssue(env: Env, proposalId: number, origin: str
 
   try {
     const p = await env.DB.prepare(
-      `SELECT p.id, p.title, p.body, u.username, u.display_name,
+      `SELECT p.id, p.title, p.body, p.user_id, u.username, u.display_name,
               (SELECT COUNT(*) FROM likes WHERE proposal_id = p.id) AS like_count
          FROM proposals p LEFT JOIN users u ON u.id = p.user_id
         WHERE p.id = ?`,
@@ -112,6 +114,11 @@ export async function maybeCreateIssue(env: Env, proposalId: number, origin: str
     )
       .bind(issue.number, issue.html_url, now(), now(), now(), proposalId)
       .run();
+    await notifyUser(env, p.user_id, {
+      title: "あなたの提案にいいねが集まりました",
+      body: `「${p.title}」の開発が決まりました。AI が開発を始めるまで少しお待ちください。`,
+      path: `#/discuss/${p.id}`,
+    });
   } catch (e) {
     console.error("Issue の作成に失敗しました", e);
     await release();
@@ -132,6 +139,13 @@ export async function retryPendingIssues(env: Env): Promise<void> {
 }
 
 export type DevStatus = "waiting" | "developing" | "review" | "pending" | "released" | "declined";
+
+/** 開発の進み具合が変わったときに、提案者へ送る通知 */
+const DEV_NOTICE: Partial<Record<DevStatus, (title: string) => { title: string; body: string }>> = {
+  developing: (t) => ({ title: "AI が開発を始めました", body: `「${t}」を、いま AI が作っています。` }),
+  released: (t) => ({ title: "あなたの提案がアプリに入りました", body: `「${t}」が反映されました。アプリを開いて見てみよう。` }),
+  declined: (t) => ({ title: "提案が見送りになりました", body: `「${t}」は今回は開発しないことになりました。理由は提案のページから見られます。` }),
+};
 
 interface GitHubIssue {
   number: number;
@@ -178,11 +192,20 @@ export async function syncDevStatuses(env: Env): Promise<void> {
   const stmts = issues.map((i) => {
     const status = devStatusOf(i);
     const at = Date.parse((status === "released" || status === "declined") && i.closed_at ? i.closed_at : i.updated_at);
-    // 変わったときだけ書き込む
+    // 変わったときだけ書き込み、変わった提案を返す
     return env.DB.prepare(
       `UPDATE proposals SET dev_status = ?, dev_status_at = ?
-        WHERE issue_number = ? AND status = 'issued' AND dev_status IS NOT ?`,
+        WHERE issue_number = ? AND status = 'issued' AND dev_status IS NOT ?
+        RETURNING id, user_id, title, dev_status`,
     ).bind(status, at, i.number, status);
   });
-  if (stmts.length) await env.DB.batch(stmts);
+  if (!stmts.length) return;
+  const changed = (await env.DB.batch<{ id: number; user_id: string | null; title: string; dev_status: DevStatus }>(stmts))
+    .flatMap((r) => r.results ?? []);
+  await Promise.all(
+    changed.map((p) => {
+      const msg = DEV_NOTICE[p.dev_status];
+      return msg ? notifyUser(env, p.user_id, { ...msg(p.title), path: `#/discuss/${p.id}` }) : undefined;
+    }),
+  );
 }

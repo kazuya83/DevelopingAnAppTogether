@@ -365,3 +365,6 @@ img, svg { -webkit-user-drag: none; }
 .dev-steps .icon.plain circle { display: none; }
 @keyframes dev-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent); } }
 @media (prefers-reduced-motion: reduce) { .dev-steps li.current .dot { animation: none; } }
+
+/* 設定の下の、規約などへのリンク */
+.legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 18px; font-size: 13px; margin: 8px 0 24px; }

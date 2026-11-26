@@ -37,7 +37,7 @@ export async function loginView(el) {
         <button class="btn block" type="submit">パスキーを作って登録</button>
       </form>
     </section>
-    <p class="hint center">登録すると、投稿した提案・コメントが公開されることに同意したものとみなします。</p>`;
+    <p class="hint center">登録すると、<a href="/legal/terms">利用規約</a>と<a href="/legal/privacy">プライバシーポリシー</a>に同意したものとみなします。不適切な投稿は禁止です。提案・コメントは公開されます。</p>`;
 
   // パスキーは「押した直後」に呼ぶ必要があるので、サーバーからのオプションは先に取っておく
   const loginOpts = prefetchOptions(() => api.post("/auth/login/options"), el);
