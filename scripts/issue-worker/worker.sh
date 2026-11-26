@@ -148,7 +148,9 @@ esac
 git add -A
 CHANGED=$(git diff --cached --name-only)
 [ -n "$CHANGED" ] || fail "変更がありませんでした"
-FORBIDDEN=$(printf '%s\n' "$CHANGED" | grep -E '^(\.github/|scripts/|ios/|wrangler\.jsonc$|package(-lock)?\.json$|\.dev\.vars)' || true)
+# 土台の仕組み（ユーザ管理・投稿・Issue 化のルール）はサーバ（src/）・DB（migrations/）・ログインまわりの JS にあるので、
+# Issue からの変更では触らせない
+FORBIDDEN=$(printf '%s\n' "$CHANGED" | grep -E '^(\.github/|scripts/|ios/|src/|migrations/|public/js/(api|app|webauthn)\.js$|wrangler\.jsonc$|package(-lock)?\.json$|\.dev\.vars)' || true)
 [ -z "$FORBIDDEN" ] || fail "変えてはいけないファイルが変わっていました: $(echo $FORBIDDEN)"
 npm run check >> "$LOG" 2>&1 || fail "npm run check が通りませんでした"
 
@@ -183,9 +185,6 @@ hold() {
   gh pr edit "$PR_URL" -R "$REPO" --add-label "$HOLD_LABEL" >> "$LOG" 2>&1
   exit 0
 }
-
-# migrations/ はマージするとそのまま本番の DB に適用されるので、人が確認する
-printf '%s\n' "$CHANGED" | grep -q '^migrations/' && hold "データベースの変更（migrations/）を含むため"
 
 # CI（check）の結果を待つ。PR を作った直後はチェックがまだ登録されていないことがある
 # （登録前は「no checks reported」で成功扱いになるので、check ジョブの行が出るまで待つ）
