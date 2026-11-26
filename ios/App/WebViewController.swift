@@ -29,6 +29,9 @@ final class WebViewController: UIViewController {
         // パスキーはアプリ側（AuthenticationServices）で扱う。Web からは window.webkit.messageHandlers.passkey で呼ぶ
         let passkey = PasskeyBridge(allowedHost: startURL.host ?? "", anchorView: view)
         config.userContentController.addScriptMessageHandler(passkey, contentWorld: .page, name: "passkey")
+        // 通知の許可と登録。Web からは window.webkit.messageHandlers.push で呼ぶ
+        let push = PushBridge(allowedHost: startURL.host ?? "")
+        config.userContentController.addScriptMessageHandler(push, contentWorld: .page, name: "push")
 
         webView = WKWebView(frame: .zero, configuration: config)
         webView.navigationDelegate = self
@@ -65,7 +68,25 @@ final class WebViewController: UIViewController {
             errorView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
 
-        webView.load(URLRequest(url: startURL, cachePolicy: .reloadRevalidatingCacheData))
+        // 通知を押して起動したときは、その画面から開く
+        var first = startURL
+        if let path = PushManager.shared.pendingPath, let url = appURL(path) {
+            first = url
+            PushManager.shared.pendingPath = nil
+        }
+        webView.load(URLRequest(url: first, cachePolicy: .reloadRevalidatingCacheData))
+
+        NotificationCenter.default.addObserver(forName: PushManager.openPathNotification, object: nil, queue: .main) { [weak self] note in
+            guard let self, let path = note.object as? String, let url = self.appURL(path) else { return }
+            PushManager.shared.pendingPath = nil
+            self.webView.load(URLRequest(url: url))
+        }
+    }
+
+    /// 通知に入っている #/... を、Web の URL にする
+    private func appURL(_ path: String) -> URL? {
+        guard path.hasPrefix("#/") else { return nil }
+        return URL(string: startURL.absoluteString + path)
     }
 
     @objc private func pullToRefresh(_ sender: UIRefreshControl) {

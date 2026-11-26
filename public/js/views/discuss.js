@@ -1,6 +1,7 @@
 import { api } from "../api.js";
 import { go, requireLogin, session } from "../app.js";
 import { icon } from "../icons.js";
+import { enablePush, pushStatus } from "../push.js";
 import {
   actionSheet,
   authorLink,
@@ -75,6 +76,11 @@ export async function discussNew(el) {
         const fd = new FormData(form);
         const { id } = await api.post("/proposals", { title: fd.get("title"), body: fd.get("body") });
         location.replace(`#/discuss/${id}`);
+        // iOS アプリで、まだ通知の許可を聞いていなければ、ここで聞く
+        const s = await pushStatus();
+        if (s?.authorization === "notDetermined" && confirm("この提案の開発が始まったときや、アプリに反映されたときに通知で知らせますか？")) {
+          if (await enablePush()) toast("通知をオンにしました");
+        }
       } catch (err) {
         toast(err.message);
       }

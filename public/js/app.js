@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { syncPushToken } from "./push.js";
 import { esc, loading, toast } from "./ui.js";
 import { discussList, discussNew, discussDetail, contributors } from "./views/discuss.js";
 import { userHome, userEdit, userSettings, userProfile } from "./views/user.js";
@@ -10,6 +11,7 @@ export const session = { user: null, isAdmin: false, threshold: 5, loaded: false
 export async function refreshSession() {
   const data = await api.get("/me");
   Object.assign(session, data, { loaded: true });
+  syncPushToken(session.user); // iOS アプリで通知を許可済みなら、この端末を登録し直す
   return session;
 }
 

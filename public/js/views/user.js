@@ -4,6 +4,7 @@ import { actionSheet, avatar, busy, empty, esc, formatDate, proposalCard, timeAg
 import { createPasskey, passkeyErrorMessage, prefetchOptions } from "../webauthn.js";
 import { loginView } from "./login.js";
 import { icon } from "../icons.js";
+import { enablePush, openPushSettings, pushStatus, pushSupported, unregisterPush } from "../push.js";
 import { block, report } from "./discuss.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -225,6 +226,16 @@ export async function userSettings(el) {
       <button class="btn block" id="add-passkey">${icon("plus", { size: 16 })}パスキーを追加</button>
     </section>
 
+    ${
+      pushSupported()
+        ? `<section class="panel">
+      <h2>通知</h2>
+      <p class="hint">自分の提案の開発が始まったとき・アプリに反映されたとき・コメントが付いたときに知らせます。</p>
+      <div id="push-area"><span class="muted small">確認しています…</span></div>
+    </section>`
+        : ""
+    }
+
     <section class="panel">
       <h2>ブロック中のユーザ</h2>
       ${
@@ -267,7 +278,9 @@ export async function userSettings(el) {
       <button class="btn block" id="logout">ログアウト</button>
       <button class="btn block danger" id="delete">アカウントを削除</button>
       <p class="hint">アカウントを削除すると、パスキー・いいね・コメント・Issue になっていない提案が消えます。Issue になった提案は、投稿者を消したうえで残ります。</p>
-    </section>`;
+    </section>
+
+    <p class="legal-links"><a href="/legal/terms">利用規約</a><a href="/legal/privacy">プライバシーポリシー</a><a href="/legal/support">サポート・お問い合わせ</a></p>`;
 
   el.querySelectorAll(".passkey-menu").forEach((btn) =>
     btn.addEventListener("click", async () => {
@@ -325,7 +338,31 @@ export async function userSettings(el) {
     }),
   );
 
+  const pushArea = el.querySelector("#push-area");
+  const renderPush = async () => {
+    const s = await pushStatus();
+    if (!pushArea || !s) return;
+    if (s.authorization === "authorized" && s.token) {
+      pushArea.innerHTML = `<p class="small">${icon("check", { size: 16, cls: "ok" })} この端末で通知を受け取ります</p>`;
+      await enablePush(); // 登録が消えていても付け直す
+    } else if (s.authorization === "denied") {
+      pushArea.innerHTML = `<p class="hint">通知が許可されていません。iPhone の「設定」で、このアプリの通知をオンにしてください。</p>
+        <button class="btn block" id="push-settings">iPhone の設定を開く</button>`;
+      pushArea.querySelector("#push-settings").addEventListener("click", openPushSettings);
+    } else {
+      pushArea.innerHTML = `<button class="btn primary block" id="push-enable">通知をオンにする</button>`;
+      pushArea.querySelector("#push-enable").addEventListener("click", (e) =>
+        busy(e.currentTarget, async () => {
+          if (await enablePush()) toast("通知をオンにしました");
+          await renderPush();
+        }),
+      );
+    }
+  };
+  renderPush();
+
   el.querySelector("#logout").addEventListener("click", async () => {
+    await unregisterPush();
     await api.post("/auth/logout").catch(() => {});
     await refreshSession();
     toast("ログアウトしました");
