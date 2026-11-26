@@ -5,7 +5,7 @@ import { loadUser } from "./session";
 import { auth, passkeys } from "./auth";
 import { comments, proposals } from "./proposals";
 import { blocks, me, reports, users } from "./users";
-import { retryPendingIssues } from "./github";
+import { retryPendingIssues, syncDevStatuses } from "./github";
 import { rpInfo } from "./util";
 
 const app = new Hono<AppEnv>();
@@ -56,6 +56,7 @@ export default {
     ctx.waitUntil(
       Promise.all([
         retryPendingIssues(env),
+        syncDevStatuses(env),
         env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(Date.now()).run(),
       ]),
     );

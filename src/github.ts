@@ -106,10 +106,11 @@ export async function maybeCreateIssue(env: Env, proposalId: number, origin: str
     const issue = (await res.json()) as { number: number; html_url: string };
 
     await env.DB.prepare(
-      `UPDATE proposals SET status = 'issued', issue_number = ?, issue_url = ?, issued_at = ?, status_updated_at = ?
+      `UPDATE proposals SET status = 'issued', issue_number = ?, issue_url = ?, issued_at = ?, status_updated_at = ?,
+              dev_status = 'waiting', dev_status_at = ?
         WHERE id = ?`,
     )
-      .bind(issue.number, issue.html_url, now(), now(), proposalId)
+      .bind(issue.number, issue.html_url, now(), now(), now(), proposalId)
       .run();
   } catch (e) {
     console.error("Issue の作成に失敗しました", e);
@@ -128,4 +129,60 @@ export async function retryPendingIssues(env: Env): Promise<void> {
     .bind((await issueThreshold(env)).threshold)
     .all<{ id: number }>();
   for (const r of results) await maybeCreateIssue(env, r.id, undefined);
+}
+
+export type DevStatus = "waiting" | "developing" | "review" | "pending" | "released" | "declined";
+
+interface GitHubIssue {
+  number: number;
+  state: "open" | "closed";
+  state_reason?: string | null;
+  labels: (string | { name?: string })[];
+  updated_at: string;
+  closed_at: string | null;
+  pull_request?: unknown;
+}
+
+/**
+ * Issue の状態とラベル（Mac の scripts/issue-worker が付ける）から、開発の進み具合を決める。
+ * PR がマージされると「Closes #番号」で Issue が completed で閉じ、main へのマージで本番にデプロイされる。
+ */
+export function devStatusOf(issue: Pick<GitHubIssue, "state" | "state_reason" | "labels">): DevStatus {
+  const labels = issue.labels.map((l) => (typeof l === "string" ? l : (l.name ?? "")));
+  if (issue.state === "closed") return issue.state_reason === "completed" ? "released" : "declined";
+  if (labels.includes("claude-rejected")) return "declined";
+  if (labels.includes("claude-failed")) return "pending";
+  if (labels.includes("claude-pr-created")) return "review";
+  if (labels.includes("claude-working")) return "developing";
+  return "waiting";
+}
+
+/** cron: Issue の状態を取り込んで、提案の開発の進み具合を更新する（GitHub API を 1 回だけ呼ぶ） */
+export async function syncDevStatuses(env: Env): Promise<void> {
+  if (!env.GITHUB_TOKEN) return;
+  const params = new URLSearchParams({ state: "all", sort: "updated", direction: "desc", per_page: "100" });
+  if (env.GITHUB_ISSUE_LABEL) params.set("labels", env.GITHUB_ISSUE_LABEL);
+  const res = await fetch(`${env.GITHUB_API_BASE || "https://api.github.com"}/repos/${env.GITHUB_REPO}/issues?${params}`, {
+    headers: {
+      Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "User-Agent": "developing-an-app-together-worker",
+    },
+  });
+  if (!res.ok) {
+    console.error(`Issue の状態を取り込めませんでした: GitHub API ${res.status}`);
+    return;
+  }
+  const issues = ((await res.json()) as GitHubIssue[]).filter((i) => !i.pull_request);
+  const stmts = issues.map((i) => {
+    const status = devStatusOf(i);
+    const at = Date.parse((status === "released" || status === "declined") && i.closed_at ? i.closed_at : i.updated_at);
+    // 変わったときだけ書き込む
+    return env.DB.prepare(
+      `UPDATE proposals SET dev_status = ?, dev_status_at = ?
+        WHERE issue_number = ? AND status = 'issued' AND dev_status IS NOT ?`,
+    ).bind(status, at, i.number, status);
+  });
+  if (stmts.length) await env.DB.batch(stmts);
 }

@@ -341,3 +341,27 @@ a.card:active { transform: scale(0.98); box-shadow: none; }
 body { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 input, textarea, .proposal-detail .body, .comment .body { -webkit-touch-callout: default; -webkit-user-select: text; user-select: text; }
 img, svg { -webkit-user-drag: none; }
+
+/* Issue になった後の進み具合 */
+.badge.dev-waiting { background: color-mix(in srgb, var(--muted) 16%, transparent); color: var(--muted); }
+.badge.dev-developing, .badge.dev-review { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
+.badge.dev-pending { background: color-mix(in srgb, #d97706 16%, transparent); color: #b45309; }
+.badge.dev-released { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.badge.dev-declined { background: color-mix(in srgb, var(--muted) 12%, transparent); color: var(--muted); text-decoration: line-through; }
+.issue-box.issued { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; gap: 12px; align-items: stretch; box-shadow: var(--shadow-sm); }
+.issue-box.issued.dev-released { background: color-mix(in srgb, var(--ok) 8%, var(--card)); border-color: color-mix(in srgb, var(--ok) 35%, var(--line)); }
+.issue-box.issued .btn { align-self: flex-start; }
+.dev-message { font-size: 14px; }
+.dev-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); font-size: 12px; color: var(--muted); }
+.dev-steps li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; }
+.dev-steps li::before { content: ""; position: absolute; top: 10px; right: 50%; width: 100%; height: 2px; background: var(--line); z-index: 0; }
+.dev-steps li:first-child::before { display: none; }
+.dev-steps li.done::before, .dev-steps li.current::before { background: var(--ok); }
+.dev-steps .dot { position: relative; z-index: 1; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--line); background: var(--card); display: inline-flex; align-items: center; justify-content: center; color: #fff; }
+.dev-steps li.done { color: var(--text); }
+.dev-steps li.done .dot { background: var(--ok); border-color: var(--ok); }
+.dev-steps li.current { color: var(--accent); font-weight: 600; }
+.dev-steps li.current .dot { border-color: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent); animation: dev-pulse 1.6s ease-in-out infinite; }
+.dev-steps .icon.plain circle { display: none; }
+@keyframes dev-pulse { 50% { box-shadow: 0 0 0 7px color-mix(in srgb, var(--accent) 8%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .dev-steps li.current .dot { animation: none; } }

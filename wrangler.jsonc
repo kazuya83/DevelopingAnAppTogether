@@ -19,8 +19,8 @@
       "migrations_dir": "migrations"
     }
   ],
-  // いいねが基準に届いたのに Issue 化に失敗した提案を 1 時間ごとに作り直す
-  "triggers": { "crons": ["17 * * * *"] },
+  // 5 分ごとに、Issue 化に失敗した提案を作り直し、Issue の開発の進み具合（開発中・反映済みなど）を取り込む
+  "triggers": { "crons": ["*/5 * * * *"] },
   "vars": {
     // Issue にする「いいね」の数
     "LIKE_THRESHOLD": "5",
