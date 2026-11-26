@@ -34,7 +34,7 @@
     "APPLE_APP_ID": "Y9YNQSMN52.com.kazuya83.developinganapptogether",
     "RP_NAME": "みんなでアプリ開発",
     // iOS アプリの通知（APNs）。鍵の中身は `npx wrangler secret put APNS_KEY` で入れる。APNS_KEY_ID が空なら通知は送らない
-    "APNS_KEY_ID": "",
+    "APNS_KEY_ID": "4VKYQQMQUY",
     "APNS_TEAM_ID": "Y9YNQSMN52",
     "APNS_TOPIC": "com.kazuya83.developinganapptogether"
   },
