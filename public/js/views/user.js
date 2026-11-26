@@ -3,6 +3,7 @@ import { go, refreshSession, session } from "../app.js";
 import { actionSheet, avatar, busy, empty, esc, formatDate, proposalCard, timeAgo, toast } from "../ui.js";
 import { createPasskey, passkeyErrorMessage, prefetchOptions } from "../webauthn.js";
 import { loginView } from "./login.js";
+import { icon } from "../icons.js";
 import { block, report } from "./discuss.js";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -63,7 +64,7 @@ async function renderProfile(el, id, { self }) {
 
   el.innerHTML = `
     <header class="page-header">
-      ${self ? `<h1>ユーザ</h1><a class="icon-btn" href="#/user/settings" aria-label="設定">⚙︎</a>` : `<button class="back" data-back>‹ 戻る</button>${session.user && !data.isMe ? `<button class="icon-btn" id="menu" aria-label="メニュー">⋯</button>` : ""}`}
+      ${self ? `<h1>ユーザ</h1><a class="icon-btn" href="#/user/settings" aria-label="設定">${icon("settings", { size: 22 })}</a>` : `<button class="back" data-back>${icon("back")}戻る</button>${session.user && !data.isMe ? `<button class="icon-btn" id="menu" aria-label="メニュー">${icon("more", { size: 22 })}</button>` : ""}`}
     </header>
     <section class="profile">
       ${avatar(u, 72)}
@@ -73,7 +74,7 @@ async function renderProfile(el, id, { self }) {
         ${data.blocked ? `<div class="badge creating">ブロック中</div>` : ""}
       </div>
     </section>
-    ${self ? `<div class="row-buttons"><a class="btn small" href="#/user/edit">プロフィールを編集</a><a class="btn small" href="#/contributors">🏆 ランキング</a></div>` : ""}
+    ${self ? `<div class="row-buttons"><a class="btn small" href="#/user/edit">プロフィールを編集</a><a class="btn small" href="#/contributors">${icon("trophy", { size: 16 })}ランキング</a></div>` : ""}
     ${stats(u)}
     ${heatmap(data.activity)}
     <div class="segmented" id="tabs">${tabs.map(([k, label], i) => `<button data-k="${k}" class="${i === 0 ? "active" : ""}">${label}</button>`).join("")}</div>
@@ -146,7 +147,7 @@ export async function userEdit(el) {
   const u = session.user;
   let newAvatar; // undefined: 変更なし / null: 削除 / string: 新しい画像
   el.innerHTML = `
-    <header class="page-header"><a class="back" href="#/user">‹ ユーザ</a></header>
+    <header class="page-header"><a class="back" href="#/user">${icon("back")}ユーザ</a></header>
     <h1>プロフィールを編集</h1>
     <form class="form" id="f">
       <div class="avatar-edit">
@@ -202,7 +203,7 @@ export async function userSettings(el) {
   ]);
 
   el.innerHTML = `
-    <header class="page-header"><a class="back" href="#/user">‹ ユーザ</a></header>
+    <header class="page-header"><a class="back" href="#/user">${icon("back")}ユーザ</a></header>
     <h1>設定</h1>
 
     <section class="panel">
@@ -216,12 +217,12 @@ export async function userSettings(el) {
             <b>${esc(k.name)}</b>
             <span class="muted small">${k.backed_up ? "同期あり" : "この端末のみ"}・最後に使用: ${k.last_used_at ? timeAgo(k.last_used_at) : "未使用"}</span>
           </div>
-          <button class="icon-btn small passkey-menu" aria-label="メニュー">⋯</button>
+          <button class="icon-btn small passkey-menu" aria-label="メニュー">${icon("more")}</button>
         </div>`,
           )
           .join("")}
       </div>
-      <button class="btn block" id="add-passkey">＋ パスキーを追加</button>
+      <button class="btn block" id="add-passkey">${icon("plus", { size: 16 })}パスキーを追加</button>
     </section>
 
     <section class="panel">

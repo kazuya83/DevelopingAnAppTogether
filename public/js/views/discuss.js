@@ -1,5 +1,6 @@
 import { api } from "../api.js";
 import { go, requireLogin, session } from "../app.js";
+import { icon } from "../icons.js";
 import {
   actionSheet,
   authorLink,
@@ -28,13 +29,13 @@ export async function discussList(el) {
   el.innerHTML = `
     <header class="page-header">
       <h1>議論</h1>
-      <a class="btn small primary" href="#/discuss/new">＋ 提案する</a>
+      <a class="btn small primary" href="#/discuss/new">${icon("plus", { size: 16 })}提案する</a>
     </header>
     <p class="lead">アプリに入れたい機能や直してほしいところを提案しよう。いいねが <b>${data.threshold}</b> 件集まると GitHub の Issue になり、開発が始まります。${thresholdNote(data.thresholdInfo) ? `<br />${thresholdNote(data.thresholdInfo)}` : ""}</p>
     <div class="segmented">
       ${SORTS.map(([k, label]) => `<button data-sort="${k}" class="${k === currentSort ? "active" : ""}">${label}</button>`).join("")}
     </div>
-    <a class="ranking-link" href="#/contributors">🏆 貢献者ランキングを見る</a>
+    <a class="ranking-link" href="#/contributors">${icon("trophy", { size: 16 })}貢献者ランキングを見る</a>
     <div class="list">
       ${data.proposals.length ? data.proposals.map((p) => proposalCard(p, data.threshold)).join("") : empty("まだ提案がありません。最初の提案をしてみよう！")}
     </div>`;
@@ -56,7 +57,7 @@ export async function discussList(el) {
 export async function discussNew(el) {
   if (!requireLogin()) return;
   el.innerHTML = `
-    <header class="page-header"><a class="back" href="#/discuss">‹ 議論</a></header>
+    <header class="page-header"><a class="back" href="#/discuss">${icon("back")}議論</a></header>
     <h1>提案する</h1>
     <form class="form" id="f">
       <label>タイトル<input name="title" maxlength="100" required placeholder="例: ダークモードに対応してほしい" /></label>
@@ -83,7 +84,7 @@ export async function discussNew(el) {
 function likeBox(p, threshold) {
   if (p.status === "issued") {
     return `<div class="issue-box done">
-      <div>🎉 いいねが集まり <b>GitHub Issue #${esc(p.issue_number)}</b> になりました</div>
+      <div class="issue-done">${icon("check", { size: 20 })}<span>いいねが集まり <b>GitHub Issue #${esc(p.issue_number)}</b> になりました</span></div>
       <a class="btn small" href="${esc(p.issue_url)}" target="_blank" rel="noopener">Issue を見る</a>
     </div>`;
   }
@@ -109,8 +110,8 @@ export async function discussDetail(el, id) {
 
   el.innerHTML = `
     <header class="page-header">
-      <a class="back" href="#/discuss">‹ 議論</a>
-      ${me ? `<button class="icon-btn" id="menu" aria-label="メニュー">⋯</button>` : ""}
+      <a class="back" href="#/discuss">${icon("back")}議論</a>
+      ${me ? `<button class="icon-btn" id="menu" aria-label="メニュー">${icon("more", { size: 22 })}</button>` : ""}
     </header>
     <article class="proposal-detail">
       <h1>${esc(p.title)} ${statusBadge(p)}</h1>
@@ -132,7 +133,7 @@ export async function discussDetail(el, id) {
                   ${cm.user_id ? `<a href="#/users/${encodeURIComponent(cm.user_id)}"><b>${esc(cm.display_name)}</b></a>` : "<b>退会したユーザ</b>"}
                   <span class="muted small">${timeAgo(cm.created_at)}</span>
                   <span class="spacer"></span>
-                  ${me ? `<button class="icon-btn small comment-menu" aria-label="メニュー">⋯</button>` : ""}
+                  ${me ? `<button class="icon-btn small comment-menu" aria-label="メニュー">${icon("more")}</button>` : ""}
                 </div>
                 <div class="body">${linkify(esc(cm.body))}</div>
               </div>
@@ -156,7 +157,7 @@ export async function discussDetail(el, id) {
   const renderLike = () => {
     likeArea.innerHTML = `
       <button class="like-btn ${p.liked ? "liked" : ""}" id="like">
-        <span class="heart">${p.liked ? "♥" : "♡"}</span> いいね <b>${p.like_count}</b>
+        <span class="heart">${icon("heart", { size: 20, filled: !!p.liked })}</span> いいね <b>${p.like_count}</b>
       </button>
       ${likeBox(p, data.threshold)}
       ${thresholdNote(data.thresholdInfo) ? `<div class="hint">${thresholdNote(data.thresholdInfo)}</div>` : ""}`;
@@ -263,7 +264,7 @@ export async function block(userId, name, after) {
 export async function contributors(el) {
   const { users } = await api.get("/users");
   el.innerHTML = `
-    <header class="page-header"><a class="back" href="#/discuss">‹ 議論</a></header>
+    <header class="page-header"><a class="back" href="#/discuss">${icon("back")}議論</a></header>
     <h1>貢献者ランキング</h1>
     <p class="lead small">提案 3 点・Issue 化 10 点・コメント 1 点・もらったいいね 1 点で計算しています。</p>
     <div class="list">

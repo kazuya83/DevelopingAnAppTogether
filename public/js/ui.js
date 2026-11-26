@@ -1,3 +1,5 @@
+import { icon } from "./icons.js";
+
 export const esc = (v) =>
   String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 
@@ -96,8 +98,8 @@ export function proposalCard(p, threshold) {
       <span class="meta-author">${p.user_id ? avatar(p, 20) + esc(p.display_name) : "退会したユーザ"}</span>
       <span>・${timeAgo(p.created_at)}</span>
       <span class="spacer"></span>
-      <span class="stat ${p.liked ? "liked" : ""}">♥ ${p.like_count}${p.status === "issued" ? "" : `/${threshold}`}</span>
-      <span class="stat">💬 ${p.comment_count}</span>
+      <span class="stat ${p.liked ? "liked" : ""}">${icon("heart", { size: 15, filled: !!p.liked })}${p.like_count}${p.status === "issued" ? "" : `/${threshold}`}</span>
+      <span class="stat">${icon("comment", { size: 15 })}${p.comment_count}</span>
     </div>
   </a>`;
 }

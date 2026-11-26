@@ -303,3 +303,20 @@ a.card:active { transform: scale(0.98); box-shadow: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* アイコン（public/js/icons.js の線の SVG） */
+.icon { flex-shrink: 0; vertical-align: -0.2em; }
+.icon.filled .fillable { fill: currentColor; }
+.icon.ok { color: var(--ok); }
+.back { display: inline-flex; align-items: center; gap: 2px; margin-left: -6px; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; }
+.ranking-link { display: inline-flex; align-items: center; gap: 6px; }
+.card-meta .stat { display: inline-flex; align-items: center; gap: 3px; }
+.like-btn .heart { display: inline-flex; font-size: 0; }
+.issue-done { display: flex; align-items: flex-start; gap: 8px; }
+.issue-done .icon { color: var(--ok); margin-top: 1px; }
+
+/* ボタンの文字を折り返さない。form の中の label をボタンにしたものも、ほかのボタンと同じ形にする */
+.btn { white-space: nowrap; }
+.form label.btn { display: inline-flex; margin-bottom: 0; font-size: 14px; }
+.avatar-edit .row-buttons { justify-content: center; }
