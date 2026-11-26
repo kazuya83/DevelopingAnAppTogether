@@ -1,6 +1,7 @@
 import { api } from "../api.js";
 import { go, refreshSession, session } from "../app.js";
 import { busy, esc, toast } from "../ui.js";
+import { icon } from "../icons.js";
 import { createPasskey, getPasskey, passkeyErrorMessage, passkeySupported, prefetchOptions } from "../webauthn.js";
 
 const USERNAME_RE = /^[A-Za-z0-9_]{3,20}$/;
@@ -77,7 +78,7 @@ export async function loginView(el) {
         const r = await api.get(`/auth/username-available?username=${encodeURIComponent(name)}`);
         if (input.value.trim() !== name) return;
         checked = { name, ok: r.available, error: r.error ?? "" };
-        status.innerHTML = r.available ? `✅ <b>${esc(name)}</b> は使えます` : esc(r.error);
+        status.innerHTML = r.available ? `${icon("check", { size: 16, cls: "ok" })}<b>${esc(name)}</b> は使えます` : esc(r.error);
       } catch (err) {
         status.textContent = err.message;
       }
