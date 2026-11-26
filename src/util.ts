@@ -38,12 +38,17 @@ export function requireUser(c: Context<AppEnv>): SessionUser {
   return user;
 }
 
+/** 管理者のユーザ名（小文字） */
+export function adminUsernames(env: Env): string[] {
+  return (env.ADMIN_USERNAMES ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function isAdmin(env: Env, user: SessionUser | null): boolean {
   if (!user) return false;
-  return env.ADMIN_USERNAMES.split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean)
-    .includes(user.username.toLowerCase());
+  return adminUsernames(env).includes(user.username.toLowerCase());
 }
 
 /** パスキーの RP ID と origin。PUBLIC_ORIGIN が無ければアクセスされたホストを使う */
@@ -69,7 +74,12 @@ export interface ThresholdInfo {
  */
 export async function issueThreshold(env: Env): Promise<ThresholdInfo> {
   const base = likeThreshold(env);
-  const row = await env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>();
+  // 管理者はユーザ数に数えない
+  const row = await env.DB.prepare(
+    "SELECT COUNT(*) AS n FROM users WHERE lower(username) NOT IN (SELECT value FROM json_each(?))",
+  )
+    .bind(JSON.stringify(adminUsernames(env)))
+    .first<{ n: number }>();
   const users = row?.n ?? 0;
   if (users >= base) return { threshold: base, base, users, majority: false };
   return { threshold: Math.max(1, Math.floor(users / 2) + 1), base, users, majority: true };
